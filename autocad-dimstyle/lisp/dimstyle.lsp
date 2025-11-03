@@ -2,17 +2,192 @@
 ;;;; AutoCAD 치수 스타일 생성 LISP 프로그램
 ;;;; 파일명: dimstyle.lsp
 ;;;; 설명: ISO-25 기반 치수 스타일을 생성하고 DCL 대화상자로 옵션 조정
+;;;; DCL 파일 자동 생성 기능 포함
 ;;;; ============================================================================
 
-(defun C:MYDIM (/ dcl_id result dimstyle-name)
+;;;; ============================================================================
+;;;; DCL 파일 생성 함수
+;;;; ============================================================================
+(defun create_dcl_file (/ dcl_file dcl_path)
+  ;; LISP 파일과 같은 위치에 DCL 파일 생성
+  (setq dcl_path (strcat (getvar "DWGPREFIX") "dimstyle.dcl"))
+  
+  (setq dcl_file (open dcl_path "w"))
+  
+  (if dcl_file
+    (progn
+      ;; DCL 내용 작성
+      (write-line "// ============================================================================" dcl_file)
+      (write-line "// AutoCAD 치수 스타일 DCL 대화상자" dcl_file)
+      (write-line "// 자동 생성됨" dcl_file)
+      (write-line "// ============================================================================" dcl_file)
+      (write-line "" dcl_file)
+      (write-line "dimstyle : dialog {" dcl_file)
+      (write-line "    label = \"ISO-25 치수 스타일 설정\";" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"기본 설정 (ISO-25 표준)\";" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 전체 축척" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"전체 축척 (DIMSCALE):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"dimscale\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"20\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 문자 높이" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"문자 높이 (DIMTXT):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"textheight\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"3\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 화살표 크기" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"화살표 크기 (DIMASZ):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"arrowsize\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"2.5\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"치수보조선 설정\";" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 치수보조선 간격띄우기" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"간격띄우기 (DIMEXO):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"extoffset\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"0.625\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 치수보조선 연장" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"보조선 연장 (DIMEXE):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"extextend\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"1.25\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"문자 설정\";" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 문자와 치수선 간격" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"문자 간격 (DIMGAP):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"textgap\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"0.625\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    spacer;" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    // 버튼" dcl_file)
+      (write-line "    : row {" dcl_file)
+      (write-line "        : spacer { width = 1; }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"accept\";" dcl_file)
+      (write-line "            label = \"확인\";" dcl_file)
+      (write-line "            is_default = true;" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"cancel\";" dcl_file)
+      (write-line "            label = \"취소\";" dcl_file)
+      (write-line "            is_cancel = true;" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : spacer { width = 1; }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "}" dcl_file)
+      
+      (close dcl_file)
+      (princ (strcat "\nDCL 파일 생성됨: " dcl_path))
+      dcl_path
+    )
+    (progn
+      (princ "\nDCL 파일 생성 실패!")
+      nil
+    )
+  )
+)
+
+;;;; ============================================================================
+;;;; 메인 명령어 함수
+;;;; ============================================================================
+(defun C:MYDIM (/ dcl_id result dimstyle-name dcl_path)
   (princ "\n치수 스타일 생성 프로그램 시작...")
   
+  ;; DCL 파일 자동 생성
+  (setq dcl_path (create_dcl_file))
+  
+  (if (not dcl_path)
+    (progn
+      (alert "DCL 파일을 생성할 수 없습니다!")
+      (exit)
+    )
+  )
+  
   ;; DCL 파일 로드
-  (setq dcl_id (load_dialog "dimstyle.dcl"))
+  (setq dcl_id (load_dialog dcl_path))
+  
+  (if (not dcl_id)
+    (progn
+      (alert "DCL 대화상자를 로드할 수 없습니다!")
+      (exit)
+    )
+  )
   
   (if (not (new_dialog "dimstyle" dcl_id))
     (progn
-      (alert "DCL 대화상자를 로드할 수 없습니다!")
+      (unload_dialog dcl_id)
+      (alert "DCL 대화상자를 초기화할 수 없습니다!")
       (exit)
     )
   )
@@ -77,7 +252,7 @@
 (defun create_dimstyle (style-name /)
   
   ;; ========================================
-  ;; 1️⃣ 선(Line) 탭 설정
+  ;; [1] 선(Line) 탭 설정
   ;; ========================================
   
   ;; 치수선 설정
@@ -93,7 +268,7 @@
   (setvar "DIMSE2" 0)                                ; 두번째 치수보조선 표시
   
   ;; ========================================
-  ;; 2️⃣ 화살표(Symbols) 탭 설정
+  ;; [2] 화살표(Symbols) 탭 설정
   ;; ========================================
   
   ;; 화살촉 설정
@@ -112,7 +287,7 @@
   (setvar "DIMARCSYM" 0)                             ; 위의 치수 문자
   
   ;; ========================================
-  ;; 3️⃣ 문자(Text) 탭 설정
+  ;; [3] 문자(Text) 탭 설정
   ;; ========================================
   
   ;; 문자 모양
@@ -131,7 +306,7 @@
   (setvar "DIMTOH" 0)                                ; 치수선에 정렬 (외부 수평: 끄기)
   
   ;; ========================================
-  ;; 4️⃣ 맞춤(Fit) 탭 설정
+  ;; [4] 맞춤(Fit) 탭 설정
   ;; ========================================
   
   ;; 맞춤 옵션
@@ -147,7 +322,7 @@
   (setvar "DIMTOFL" 1)                               ; 치수보조선 사이에 치수선 그리기: 1 (켜짐)
   
   ;; ========================================
-  ;; 5️⃣ 1차 단위(Primary Units) 탭 설정
+  ;; [5] 1차 단위(Primary Units) 탭 설정
   ;; ========================================
   
   ;; 선형 치수
@@ -168,7 +343,7 @@
   (setvar "DIMAZIN" 0)                               ; 각도 0 억제: 없음
   
   ;; ========================================
-  ;; 6️⃣ 대체 단위(Alternate Units) 탭 설정
+  ;; [6] 대체 단위(Alternate Units) 탭 설정
   ;; ========================================
   
   ;; 대체 단위 표시
@@ -178,7 +353,7 @@
   (setvar "DIMALTRND" 0)                             ; 반올림: 0
   
   ;; ========================================
-  ;; 7️⃣ 공차(Tolerances) 탭 설정
+  ;; [7] 공차(Tolerances) 탭 설정
   ;; ========================================
   
   ;; 공차 형식
@@ -226,5 +401,6 @@
 (princ "\n========================================")
 (princ "\n  명령어: MYDIM")
 (princ "\n  설명: ISO-25 기반 치수 스타일 생성")
+(princ "\n  DCL 파일 자동 생성")
 (princ "\n========================================")
 (princ)
