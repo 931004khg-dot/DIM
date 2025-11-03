@@ -8,7 +8,7 @@ dimstyle : dialog {
     label = "ISO-25 치수 스타일 설정";
     
     : boxed_column {
-        label = "기본 설정";
+        label = "기본 설정 (ISO-25 표준)";
         
         // 전체 축척
         : row {
@@ -20,7 +20,7 @@ dimstyle : dialog {
             : edit_box {
                 key = "dimscale";
                 edit_width = 10;
-                value = "25";
+                value = "20";
             }
         }
         
@@ -34,7 +34,7 @@ dimstyle : dialog {
             : edit_box {
                 key = "textheight";
                 edit_width = 10;
-                value = "2.5";
+                value = "3";
             }
         }
         

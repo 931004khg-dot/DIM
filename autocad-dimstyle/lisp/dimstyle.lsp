@@ -17,9 +17,9 @@
     )
   )
   
-  ;; 기본값 설정
-  (setq *dim_scale* "25")          ; 치수 전체 축척
-  (setq *dim_text_height* "2.5")   ; 문자 높이
+  ;; 기본값 설정 (ISO-25 표준)
+  (setq *dim_scale* "20")          ; 치수 전체 축척 (ISO-25 표준: 20)
+  (setq *dim_text_height* "3")     ; 문자 높이 (ISO-25 표준: 3)
   (setq *dim_arrow_size* "2.5")    ; 화살표 크기
   (setq *dim_ext_offset* "0.625")  ; 치수보조선 간격띄우기
   (setq *dim_ext_extend* "1.25")   ; 치수보조선 연장
@@ -72,49 +72,128 @@
 )
 
 ;;;; ============================================================================
-;;;; 치수 스타일 생성 함수
+;;;; 치수 스타일 생성 함수 - ISO-25 전체 설정
 ;;;; ============================================================================
 (defun create_dimstyle (style-name /)
   
-  ;; ISO-25 기반 설정 적용
-  ;; 전체 축척
-  (setvar "DIMSCALE" (atof *dim_scale*))
+  ;; ========================================
+  ;; 1️⃣ 선(Line) 탭 설정
+  ;; ========================================
   
-  ;; 문자 설정
-  (setvar "DIMTXT" (atof *dim_text_height*))        ; 문자 높이
-  (setvar "DIMGAP" (atof *dim_text_gap*))           ; 문자와 치수선 간격
-  (setvar "DIMTAD" 1)                                ; 문자를 치수선 위에 배치
-  (setvar "DIMTIH" 0)                                ; 문자를 항상 수평으로
-  (setvar "DIMTOH" 0)                                ; 문자를 항상 수평으로
-  
-  ;; 화살표 설정
-  (setvar "DIMASZ" (atof *dim_arrow_size*))         ; 화살표 크기
-  (setvar "DIMBLK" "")                               ; 화살표 스타일 (기본 닫힌 화살표)
-  (setvar "DIMBLK1" "")
-  (setvar "DIMBLK2" "")
+  ;; 치수선 설정
+  (setvar "DIMCLRD" 256)                             ; 치수선 색상: ByLayer
+  (setvar "DIMDLE" 0.0)                              ; 눈금 너머로 연장: 0
+  (setvar "DIMDLI" 3.75)                             ; 기준선 간격: 3.75
   
   ;; 치수보조선 설정
-  (setvar "DIMEXO" (atof *dim_ext_offset*))         ; 치수보조선 간격띄우기
-  (setvar "DIMEXE" (atof *dim_ext_extend*))         ; 치수보조선 연장
+  (setvar "DIMCLRE" 256)                             ; 치수보조선 색상: ByLayer
+  (setvar "DIMEXE" (atof *dim_ext_extend*))          ; 치수선 너머로 연장: 1.25
+  (setvar "DIMEXO" (atof *dim_ext_offset*))          ; 원점에서 간격띄우기: 0.625
   (setvar "DIMSE1" 0)                                ; 첫번째 치수보조선 표시
   (setvar "DIMSE2" 0)                                ; 두번째 치수보조선 표시
   
-  ;; 치수선 설정
-  (setvar "DIMDLI" 10.0)                             ; 치수선 간격
-  (setvar "DIMDLE" 0.0)                              ; 치수선 연장
+  ;; ========================================
+  ;; 2️⃣ 화살표(Symbols) 탭 설정
+  ;; ========================================
   
-  ;; 단위 설정
-  (setvar "DIMUNIT" 2)                               ; 십진법
-  (setvar "DIMDEC" 2)                                ; 소수점 이하 자릿수
-  (setvar "DIMZIN" 8)                                ; 0 표시 제어
+  ;; 화살촉 설정
+  (setvar "DIMBLK" "")                               ; 첫 번째: 닫힌 채움 (기본값 = 빈 문자열)
+  (setvar "DIMBLK1" "")                              ; 두 번째: 닫힌 채움
+  (setvar "DIMBLK2" "")                              ; 지시선: 닫힌 채움
+  (setvar "DIMASZ" (atof *dim_arrow_size*))          ; 화살표 크기: 2.5
   
-  ;; 공차 설정
-  (setvar "DIMTOL" 0)                                ; 공차 표시 끄기
+  ;; 중심 표시
+  (setvar "DIMCEN" 2.5)                              ; 중심 표시 크기: 2.5 (양수 = 표식)
   
-  ;; 색상 설정
-  (setvar "DIMCLRD" 0)                               ; 치수선 색상 (ByBlock)
-  (setvar "DIMCLRE" 0)                               ; 치수보조선 색상 (ByBlock)
-  (setvar "DIMCLRT" 0)                               ; 문자 색상 (ByBlock)
+  ;; 치수 꺾기
+  (setvar "DIMJOGANG" 45)                            ; 반지름 꺾기 각도: 45도
+  
+  ;; 호 길이 기호 (DIMARCSYM)
+  (setvar "DIMARCSYM" 0)                             ; 위의 치수 문자
+  
+  ;; ========================================
+  ;; 3️⃣ 문자(Text) 탭 설정
+  ;; ========================================
+  
+  ;; 문자 모양
+  (setvar "DIMTXSTY" "Standard")                     ; 문자 스타일: Standard
+  (setvar "DIMCLRT" 7)                               ; 문자 색상: 흰색 (7)
+  (setvar "DIMTXT" (atof *dim_text_height*))         ; 문자 높이: 3
+  (setvar "DIMTFAC" 1.0)                             ; 분수 높이 축척: 1
+  
+  ;; 문자 배치
+  (setvar "DIMTAD" 1)                                ; 수직: 위 (1)
+  (setvar "DIMJUST" 0)                               ; 수평: 중심 (0)
+  (setvar "DIMGAP" (atof *dim_text_gap*))            ; 치수선에 관계없이: 0.625
+  
+  ;; 문자 정렬
+  (setvar "DIMTIH" 0)                                ; 치수선에 정렬 (내부 수평: 끄기)
+  (setvar "DIMTOH" 0)                                ; 치수선에 정렬 (외부 수평: 끄기)
+  
+  ;; ========================================
+  ;; 4️⃣ 맞춤(Fit) 탭 설정
+  ;; ========================================
+  
+  ;; 맞춤 옵션
+  (setvar "DIMATFIT" 3)                              ; 문자 또는 화살표(최대로 맞춤): 3
+  
+  ;; 문자 배치
+  (setvar "DIMTMOVE" 0)                              ; 치수선 외의 배치: 0
+  
+  ;; 치수 축척
+  (setvar "DIMSCALE" (atof *dim_scale*))             ; 전체 축척: 20
+  
+  ;; 최소으로 조정
+  (setvar "DIMTOFL" 1)                               ; 치수보조선 사이에 치수선 그리기: 1 (켜짐)
+  
+  ;; ========================================
+  ;; 5️⃣ 1차 단위(Primary Units) 탭 설정
+  ;; ========================================
+  
+  ;; 선형 치수
+  (setvar "DIMLUNIT" 2)                              ; 단위 형식: 십진법 (2)
+  (setvar "DIMDEC" 2)                                ; 정밀도: 0.00 (소수점 2자리)
+  (setvar "DIMDSEP" 46)                              ; 소수 구분 기호: . (점, ASCII 46)
+  (setvar "DIMRND" 0)                                ; 반올림: 0
+  
+  ;; 측정 축척
+  (setvar "DIMLFAC" 1.0)                             ; 비율: 1
+  
+  ;; 0 억제
+  (setvar "DIMZIN" 12)                               ; 선행 0 억제 (8 + 4 = 12)
+  
+  ;; 각도 치수
+  (setvar "DIMAUNIT" 0)                              ; 단위 형식: 십진 도수 (0)
+  (setvar "DIMADEC" 0)                               ; 정밀도: 0
+  (setvar "DIMAZIN" 0)                               ; 각도 0 억제: 없음
+  
+  ;; ========================================
+  ;; 6️⃣ 대체 단위(Alternate Units) 탭 설정
+  ;; ========================================
+  
+  ;; 대체 단위 표시
+  (setvar "DIMALT" 0)                                ; 대체 단위 표시: 끄기 (0)
+  (setvar "DIMALTF" 0.03937007)                      ; 대체 단위 승수: mm to inch
+  (setvar "DIMALTD" 3)                               ; 대체 단위 정밀도: 0.000
+  (setvar "DIMALTRND" 0)                             ; 반올림: 0
+  
+  ;; ========================================
+  ;; 7️⃣ 공차(Tolerances) 탭 설정
+  ;; ========================================
+  
+  ;; 공차 형식
+  (setvar "DIMTOL" 0)                                ; 공차 표시: 없음 (0)
+  (setvar "DIMTP" 0)                                 ; 상한값: 0
+  (setvar "DIMTM" 0)                                 ; 하한값: 0
+  (setvar "DIMTFAC" 1.0)                             ; 높이에 대한 축척: 1
+  (setvar "DIMTOLJ" 0)                               ; 수직 위치: 맨 아래 (0)
+  
+  ;; 대체 단위 공차
+  (setvar "DIMALTD" 3)                               ; 정밀도: 0.000
+  
+  ;; ========================================
+  ;; 치수 스타일 저장 및 적용
+  ;; ========================================
   
   ;; 치수 스타일이 이미 있는지 확인
   (if (tblsearch "DIMSTYLE" style-name)
@@ -132,6 +211,10 @@
   (command "._-DIMSTYLE" "_R" style-name)
   
   (princ (strcat "\n치수 스타일 '" style-name "' 생성 완료!"))
+  (princ "\n=== ISO-25 표준 설정 적용됨 ===")
+  (princ (strcat "\n  전체 축척: " *dim_scale*))
+  (princ (strcat "\n  문자 높이: " *dim_text_height*))
+  (princ (strcat "\n  화살표 크기: " *dim_arrow_size*))
   (princ)
 )
 
