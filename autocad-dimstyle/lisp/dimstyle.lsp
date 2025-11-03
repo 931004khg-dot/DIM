@@ -74,18 +74,7 @@
 ;;;; ============================================================================
 ;;;; 치수 스타일 생성 함수
 ;;;; ============================================================================
-(defun create_dimstyle (style-name / old-dimstyle)
-  
-  ;; 기존 치수 스타일이 있으면 삭제
-  (if (tblsearch "DIMSTYLE" style-name)
-    (command "._-DIMSTYLE" "_R" style-name "_Y")
-  )
-  
-  ;; 현재 치수 스타일 저장
-  (setq old-dimstyle (getvar "DIMSTYLE"))
-  
-  ;; 새 치수 스타일 생성
-  (command "._-DIMSTYLE" "_S" style-name)
+(defun create_dimstyle (style-name /)
   
   ;; ISO-25 기반 설정 적용
   ;; 전체 축척
@@ -127,8 +116,17 @@
   (setvar "DIMCLRE" 0)                               ; 치수보조선 색상 (ByBlock)
   (setvar "DIMCLRT" 0)                               ; 문자 색상 (ByBlock)
   
-  ;; 치수 스타일 저장
-  (command "._-DIMSTYLE" "_S" style-name)
+  ;; 치수 스타일이 이미 있는지 확인
+  (if (tblsearch "DIMSTYLE" style-name)
+    (progn
+      ;; 있으면 덮어쓰기
+      (command "._-DIMSTYLE" "_S" style-name "_Y")
+    )
+    (progn
+      ;; 없으면 새로 생성
+      (command "._-DIMSTYLE" "_S" style-name)
+    )
+  )
   
   ;; 새로 만든 스타일을 현재 스타일로 설정
   (command "._-DIMSTYLE" "_R" style-name)
