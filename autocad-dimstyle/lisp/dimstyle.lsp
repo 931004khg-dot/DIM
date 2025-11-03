@@ -280,11 +280,17 @@
   ;; 중심 표시
   (setvar "DIMCEN" 2.5)                              ; 중심 표시 크기: 2.5 (양수 = 표식)
   
-  ;; 치수 꺾기
-  (setvar "DIMJOGANG" 45)                            ; 반지름 꺾기 각도: 45도
+  ;; 치수 꺾기 (AutoCAD 2006 이상에서만 사용 가능)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMJOGANG" 45))))
+    (setvar "DIMJOGANG" 45)                          ; 반지름 꺾기 각도: 45도
+    (princ "\n(참고: DIMJOGANG 변수는 이 버전에서 지원되지 않습니다)")
+  )
   
-  ;; 호 길이 기호 (DIMARCSYM)
-  (setvar "DIMARCSYM" 0)                             ; 위의 치수 문자
+  ;; 호 길이 기호 (AutoCAD 2006 이상에서만 사용 가능)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMARCSYM" 0))))
+    (setvar "DIMARCSYM" 0)                           ; 위의 치수 문자
+    (princ "\n(참고: DIMARCSYM 변수는 이 버전에서 지원되지 않습니다)")
+  )
   
   ;; ========================================
   ;; [3] 문자(Text) 탭 설정
@@ -298,7 +304,12 @@
   
   ;; 문자 배치
   (setvar "DIMTAD" 1)                                ; 수직: 위 (1)
-  (setvar "DIMJUST" 0)                               ; 수평: 중심 (0)
+  
+  ;; 수평 정렬 (DIMJUST - AutoCAD 2000 이상)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMJUST" 0))))
+    (setvar "DIMJUST" 0)                             ; 수평: 중심 (0)
+  )
+  
   (setvar "DIMGAP" (atof *dim_text_gap*))            ; 치수선에 관계없이: 0.625
   
   ;; 문자 정렬
@@ -309,11 +320,15 @@
   ;; [4] 맞춤(Fit) 탭 설정
   ;; ========================================
   
-  ;; 맞춤 옵션
-  (setvar "DIMATFIT" 3)                              ; 문자 또는 화살표(최대로 맞춤): 3
+  ;; 맞춤 옵션 (AutoCAD 2000 이상)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMATFIT" 3))))
+    (setvar "DIMATFIT" 3)                            ; 문자 또는 화살표(최대로 맞춤): 3
+  )
   
-  ;; 문자 배치
-  (setvar "DIMTMOVE" 0)                              ; 치수선 외의 배치: 0
+  ;; 문자 배치 (AutoCAD 2000 이상)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMTMOVE" 0))))
+    (setvar "DIMTMOVE" 0)                            ; 치수선 외의 배치: 0
+  )
   
   ;; 치수 축척
   (setvar "DIMSCALE" (atof *dim_scale*))             ; 전체 축척: 20
@@ -326,7 +341,11 @@
   ;; ========================================
   
   ;; 선형 치수
-  (setvar "DIMLUNIT" 2)                              ; 단위 형식: 십진법 (2)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMLUNIT" 2))))
+    (setvar "DIMLUNIT" 2)                            ; 단위 형식: 십진법 (2)
+    (setvar "DIMUNIT" 2)                             ; 구 버전용 대체 변수
+  )
+  
   (setvar "DIMDEC" 2)                                ; 정밀도: 0.00 (소수점 2자리)
   (setvar "DIMDSEP" 46)                              ; 소수 구분 기호: . (점, ASCII 46)
   (setvar "DIMRND" 0)                                ; 반올림: 0
@@ -337,10 +356,18 @@
   ;; 0 억제
   (setvar "DIMZIN" 12)                               ; 선행 0 억제 (8 + 4 = 12)
   
-  ;; 각도 치수
-  (setvar "DIMAUNIT" 0)                              ; 단위 형식: 십진 도수 (0)
-  (setvar "DIMADEC" 0)                               ; 정밀도: 0
-  (setvar "DIMAZIN" 0)                               ; 각도 0 억제: 없음
+  ;; 각도 치수 (AutoCAD 2000 이상)
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMAUNIT" 0))))
+    (setvar "DIMAUNIT" 0)                            ; 단위 형식: 십진 도수 (0)
+  )
+  
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMADEC" 0))))
+    (setvar "DIMADEC" 0)                             ; 정밀도: 0
+  )
+  
+  (if (not (vl-catch-all-error-p (vl-catch-all-apply 'setvar (list "DIMAZIN" 0))))
+    (setvar "DIMAZIN" 0)                             ; 각도 0 억제: 없음
+  )
   
   ;; ========================================
   ;; [6] 대체 단위(Alternate Units) 탭 설정
