@@ -1,16 +1,30 @@
 ;;;; ============================================================================
 ;;;; AutoCAD 치수 스타일 생성 LISP 프로그램
 ;;;; 파일명: dimstyle.lsp
-;;;; 설명: ISO-25 기반 치수 스타일을 생성하고 DCL 대화상자로 옵션 조정
-;;;; DCL 파일 자동 생성 기능 포함
 ;;;; ============================================================================
+
+(vl-load-com)
+
+(setq *g_dimstyle_lsp_path*
+  (if *load-pathname*
+    (vl-filename-directory *load-pathname*)
+    nil ; 로드 경로를 찾을 수 없음 (예: 붙여넣기 실행)
+  )
+)
 
 ;;;; ============================================================================
 ;;;; DCL 파일 생성 함수
 ;;;; ============================================================================
 (defun create_dcl_file (/ dcl_file dcl_path)
-  ;; LISP 파일과 같은 위치에 DCL 파일 생성
-  (setq dcl_path (strcat (getvar "DWGPREFIX") "dimstyle.dcl"))
+  
+  (if (and *g_dimstyle_lsp_path* (vl-file-directory-p *g_dimstyle_lsp_path*))
+    (setq dcl_path (strcat *g_dimstyle_lsp_path* "\\dimstyle.dcl")) ; 윈도우 경로 구분자 사용
+    
+    (progn
+      (setq dcl_path (vl-filename-mktemp "dimstyle_dcl" nil ".dcl"))
+      (princ (strcat "\nLISP 파일 경로를 찾을 수 없어 임시 폴더에 DCL 생성: " dcl_path))
+    )
+  )
   
   (setq dcl_file (open dcl_path "w"))
   
@@ -149,7 +163,7 @@
       
       (close dcl_file)
       (princ (strcat "\nDCL 파일 생성됨: " dcl_path))
-      dcl_path
+      dcl_path ; DCL 파일 경로 반환
     )
     (progn
       (princ "\nDCL 파일 생성 실패!")
@@ -167,9 +181,9 @@
   ;; DCL 파일 자동 생성
   (setq dcl_path (create_dcl_file))
   
-  (if (not dcl_path)
+  (if (or (not dcl_path) (not (findfile dcl_path)))
     (progn
-      (alert "DCL 파일을 생성할 수 없습니다!")
+      (alert "DCL 파일을 생성하거나 찾을 수 없습니다!")
       (exit)
     )
   )
@@ -179,7 +193,7 @@
   
   (if (not dcl_id)
     (progn
-      (alert "DCL 대화상자를 로드할 수 없습니다!")
+      (alert (strcat "DCL 대화상자를 로드할 수 없습니다!\n경로: " dcl_path))
       (exit)
     )
   )
@@ -193,12 +207,12 @@
   )
   
   ;; 기본값 설정 (ISO-25 표준)
-  (setq *dim_scale* "20")          ; 치수 전체 축척 (ISO-25 표준: 20)
+  (setq *dim_scale* "20")        ; 치수 전체 축척 (ISO-25 표준: 20)
   (setq *dim_text_height* "3")     ; 문자 높이 (ISO-25 표준: 3)
-  (setq *dim_arrow_size* "2.5")    ; 화살표 크기
-  (setq *dim_ext_offset* "0.625")  ; 치수보조선 간격띄우기
-  (setq *dim_ext_extend* "1.25")   ; 치수보조선 연장
-  (setq *dim_text_gap* "0.625")    ; 문자와 치수선 간격
+  (setq *dim_arrow_size* "2.5")   ; 화살표 크기
+  (setq *dim_ext_offset* "0.625") ; 치수보조선 간격띄우기
+  (setq *dim_ext_extend* "1.25")  ; 치수보조선 연장
+  (setq *dim_text_gap* "0.625")   ; 문자와 치수선 간격
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
@@ -213,7 +227,7 @@
   (action_tile "textheight" "(setq *dim_text_height* $value)")
   (action_tile "arrowsize" "(setq *dim_arrow_size* $value)")
   (action_tile "extoffset" "(setq *dim_ext_offset* $value)")
-  (action_tile "extextend" "(setq *dim_ext_extend* $value)")
+  (action_tile "extextend" "(setq *dim_ext_extend$ $value)")
   (action_tile "textgap" "(setq *dim_text_gap* $value)")
   
   (action_tile "accept" "(done_dialog 1)")
@@ -223,6 +237,17 @@
   (setq result (start_dialog))
   
   (unload_dialog dcl_id)
+  
+  ;; (wcmatch "비교문자열" "패턴") - 와일드카드 비교
+  (if (not (wcmatch (strcase (vl-filename-base dcl_path)) "DIMSTYLE"))
+    (if (findfile dcl_path)
+      (progn
+        (vl-file-delete dcl_path)
+        (princ (strcat "\n임시 DCL 파일 삭제됨: " dcl_path))
+      )
+    )
+    (princ (strcat "\nDCL 파일 유지됨: " dcl_path))
+  )
   
   ;; 사용자가 확인을 누른 경우
   (if (= result 1)
@@ -256,120 +281,125 @@
   ;; ========================================
   
   ;; 치수선 설정
-  (setvar "DIMCLRD" 256)                             ; 치수선 색상: ByLayer
-  (setvar "DIMDLE" 0.0)                              ; 눈금 너머로 연장: 0
-  (setvar "DIMDLI" 3.75)                             ; 기준선 간격: 3.75
+  (setvar "DIMCLRD" 256)                 ; 치수선 색상: ByLayer
+  (setvar "DIMDLE" 0.0)                  ; 눈금 너머로 연장: 0
+  (setvar "DIMDLI" 3.75)                 ; 기준선 간격: 3.75
   
   ;; 치수보조선 설정
-  (setvar "DIMCLRE" 256)                             ; 치수보조선 색상: ByLayer
-  (setvar "DIMEXE" (atof *dim_ext_extend*))          ; 치수선 너머로 연장: 1.25
-  (setvar "DIMEXO" (atof *dim_ext_offset*))          ; 원점에서 간격띄우기: 0.625
-  (setvar "DIMSE1" 0)                                ; 첫번째 치수보조선 표시
-  (setvar "DIMSE2" 0)                                ; 두번째 치수보조선 표시
+  (setvar "DIMCLRE" 256)                 ; 치수보조선 색상: ByLayer
+  (setvar "DIMEXE" (atof *dim_ext_extend*))   ; 치수선 너머로 연장: 1.25
+  (setvar "DIMEXO" (atof *dim_ext_offset*))   ; 원점에서 간격띄우기: 0.625
+  (setvar "DIMSE1" 0)                    ; 첫번째 치수보조선 표시
+  (setvar "DIMSE2" 0)                    ; 두번째 치수보조선 표시
   
   ;; ========================================
   ;; [2] 화살표(Symbols) 탭 설정
   ;; ========================================
   
   ;; 화살촉 설정
-  (setvar "DIMBLK" "")                               ; 첫 번째: 닫힌 채움 (기본값 = 빈 문자열)
-  (setvar "DIMBLK1" "")                              ; 두 번째: 닫힌 채움
-  (setvar "DIMBLK2" "")                              ; 지시선: 닫힌 채움
-  (setvar "DIMASZ" (atof *dim_arrow_size*))          ; 화살표 크기: 2.5
+  (setvar "DIMBLK" "")                    ; 첫 번째: 닫힌 채움 (기본값 = 빈 문자열)
+  (setvar "DIMBLK1" "")                   ; 두 번째: 닫힌 채움
+  (setvar "DIMBLK2" "")                   ; 지시선: 닫힌 채움
+  (setvar "DIMASZ" (atof *dim_arrow_size*)) ; 화살표 크기: 2.5
   
   ;; 중심 표시
-  (setvar "DIMCEN" 2.5)                              ; 중심 표시 크기: 2.5 (양수 = 표식)
-  
-  ;; 참고: DIMJOGANG은 명령어로는 존재하지만 setvar로 설정할 수 없습니다.
-  ;; 치수 스타일 대화상자에서 수동으로 설정해야 합니다.
+  (setvar "DIMCEN" 2.5)                  ; 중심 표시 크기: 2.5 (양수 = 표식)
   
   ;; ========================================
   ;; [3] 문자(Text) 탭 설정
   ;; ========================================
   
   ;; 문자 모양
-  (setvar "DIMTXSTY" "Standard")                     ; 문자 스타일: Standard
-  (setvar "DIMCLRT" 7)                               ; 문자 색상: 흰색 (7)
-  (setvar "DIMTXT" (atof *dim_text_height*))         ; 문자 높이: 3
-  (setvar "DIMTFAC" 1.0)                             ; 분수 높이 축척: 1
+  (setvar "DIMTXSTY" "Standard")         ; 문자 스타일: Standard
+  (setvar "DIMCLRT" 7)                   ; 문자 색상: 흰색 (7)
+  (setvar "DIMTXT" (atof *dim_text_height*)) ; 문자 높이: 3
+  (setvar "DIMTFAC" 1.0)                 ; 분수 높이 축척: 1
   
   ;; 문자 배치
-  (setvar "DIMTAD" 1)                                ; 수직: 위 (1)
-  (setvar "DIMJUST" 0)                               ; 수평: 중심 (0)
-  (setvar "DIMGAP" (atof *dim_text_gap*))            ; 치수선에 관계없이: 0.625
+  (setvar "DIMTAD" 1)                    ; 수직: 위 (1)
+  (setvar "DIMJUST" 0)                   ; 수평: 중심 (0)
+  (setvar "DIMGAP" (atof *dim_text_gap*))  ; 치수선에 관계없이: 0.625
   
   ;; 문자 정렬
-  (setvar "DIMTIH" 0)                                ; 치수선에 정렬 (내부 수평: 끄기)
-  (setvar "DIMTOH" 0)                                ; 치수선에 정렬 (외부 수평: 끄기)
+  (setvar "DIMTIH" 0)                    ; 치수선에 정렬 (내부 수평: 끄기)
+  (setvar "DIMTOH" 0)                    ; 치수선에 정렬 (외부 수평: 끄기)
   
   ;; ========================================
   ;; [4] 맞춤(Fit) 탭 설정
   ;; ========================================
   
   ;; 맞춤 옵션
-  (setvar "DIMATFIT" 3)                              ; 문자 또는 화살표(최대로 맞춤): 3
+  (setvar "DIMATFIT" 3)                 ; 문자 또는 화살표(최대로 맞춤): 3
   
   ;; 문자 배치
-  (setvar "DIMTMOVE" 0)                              ; 치수선 외의 배치: 0
+  (setvar "DIMTMOVE" 0)                 ; 치수선 외의 배치: 0
   
   ;; 치수 축척
-  (setvar "DIMSCALE" (atof *dim_scale*))             ; 전체 축척: 20
+  (setvar "DIMSCALE" (atof *dim_scale*))   ; 전체 축척: 20
   
   ;; 최소으로 조정
-  (setvar "DIMTOFL" 1)                               ; 치수보조선 사이에 치수선 그리기: 1 (켜짐)
+  (setvar "DIMTOFL" 1)                   ; 치수보조선 사이에 치수선 그리기: 1 (켜짐)
   
   ;; ========================================
   ;; [5] 1차 단위(Primary Units) 탭 설정
   ;; ========================================
   
   ;; 선형 치수
-  (setvar "DIMLUNIT" 2)                              ; 단위 형식: 십진법 (2)
-  (setvar "DIMDEC" 2)                                ; 정밀도: 0.00 (소수점 2자리)
+  (setvar "DIMLUNIT" 2)                 ; 단위 형식: 십진법 (2)
+  (setvar "DIMDEC" 2)                   ; 정밀도: 0.00 (소수점 2자리)
   
-  ;; 소수 구분 기호 - 버전에 따라 설정 방식이 다름
-  ;; AutoCAD 2023에서는 이 변수를 setvar로 설정할 수 없을 수 있음
-  ;; (setvar "DIMDSEP" 46)
+  ;; [수정] 소수 구분 기호 (정수 0이 아닌 문자열 "."로 설정)
+  ;; (ascii ".")는 46을 반환하여 오류 발생.
+  ;; setvar로 DIMDSEP를 설정할 때는 예외적으로 문자열을 사용해야 합니다.
+  (setvar "DIMDSEP" ".")                   ; 소수 구분 기호: . (점)
   
-  (setvar "DIMRND" 0)                                ; 반올림: 0
+  (setvar "DIMRND" 0)                    ; 반올림: 0
   
   ;; 측정 축척
-  (setvar "DIMLFAC" 1.0)                             ; 비율: 1
+  (setvar "DIMLFAC" 1.0)                 ; 비율: 1
   
-  ;; 0 억제
-  (setvar "DIMZIN" 12)                               ; 선행 0 억제 (8 + 4 = 12)
+  ;; [수정] 0 억제
+  ;; 12 (8+4)는 선행 0 (.5)과 후행 0 (12.5)을 모두 억제합니다.
+  ;; ISO 표준은 선행 0을 표시(0.5)하므로, 후행 0만 억제하는 8을 사용합니다.
+  (setvar "DIMZIN" 8)                    ; 후행 0 억제 (8)
   
   ;; 각도 치수
-  (setvar "DIMAUNIT" 0)                              ; 단위 형식: 십진 도수 (0)
-  (setvar "DIMADEC" 0)                               ; 정밀도: 0
-  (setvar "DIMAZIN" 0)                               ; 각도 0 억제: 없음
+  (setvar "DIMAUNIT" 0)                 ; 단위 형식: 십진 도수 (0)
+  (setvar "DIMADEC" 0)                  ; 정밀도: 0
+  (setvar "DIMAZIN" 0)                  ; 각도 0 억제: 없음
   
   ;; ========================================
   ;; [6] 대체 단위(Alternate Units) 탭 설정
   ;; ========================================
   
   ;; 대체 단위 표시
-  (setvar "DIMALT" 0)                                ; 대체 단위 표시: 끄기 (0)
-  (setvar "DIMALTF" 0.03937007)                      ; 대체 단위 승수: mm to inch
-  (setvar "DIMALTD" 3)                               ; 대체 단위 정밀도: 0.000
-  (setvar "DIMALTRND" 0)                             ; 반올림: 0
+  (setvar "DIMALT" 0)                    ; 대체 단위 표시: 끄기 (0)
+  (setvar "DIMALTF" 0.03937007)          ; 대체 단위 승수: mm to inch
+  (setvar "DIMALTD" 3)                   ; 대체 단위 정밀도: 0.000
+  (setvar "DIMALTRND" 0)                 ; 반올림: 0
   
   ;; ========================================
   ;; [7] 공차(Tolerances) 탭 설정
   ;; ========================================
   
   ;; 공차 형식
-  (setvar "DIMTOL" 0)                                ; 공차 표시: 없음 (0)
-  (setvar "DIMTP" 0)                                 ; 상한값: 0
-  (setvar "DIMTM" 0)                                 ; 하한값: 0
-  (setvar "DIMTFAC" 1.0)                             ; 높이에 대한 축척: 1
-  (setvar "DIMTOLJ" 0)                               ; 수직 위치: 맨 아래 (0)
+  (setvar "DIMTOL" 0)                    ; 공차 표시: 없음 (0)
+  (setvar "DIMTP" 0)                     ; 상한값: 0
+  (setvar "DIMTM" 0)                     ; 하한값: 0
+  (setvar "DIMTFAC" 1.0)                 ; 높이에 대한 축척: 1
+  (setvar "DIMTOLJ" 0)                   ; 수직 위치: 맨 아래 (0)
   
   ;; 대체 단위 공차
-  (setvar "DIMALTD" 3)                               ; 정밀도: 0.000
+  (setvar "DIMALTD" 3)                   ; 정밀도: 0.000
   
   ;; ========================================
   ;; 치수 스타일 저장 및 적용
   ;; ========================================
+  
+  ;; [수정] (setvar)로 변수만 설정하면 현재 스타일에만 적용됩니다.
+  ;; (command)를 사용하기 전에 (setvar)를 사용하면
+  ;; -DIMSTYLE -> S(저장) 명령이 현재 설정된 변수값을 
+  ;; "style-name"으로 저장하게 됩니다.
   
   ;; 치수 스타일이 이미 있는지 확인
   (if (tblsearch "DIMSTYLE" style-name)
@@ -378,7 +408,7 @@
       (command "._-DIMSTYLE" "_S" style-name "_Y")
     )
     (progn
-      ;; 없으면 새로 생성
+      ;; 없으면 새로 생성 (현재 설정값 기준)
       (command "._-DIMSTYLE" "_S" style-name)
     )
   )
@@ -398,10 +428,10 @@
 ;;;; 프로그램 로드 메시지
 ;;;; ============================================================================
 (princ "\n========================================")
-(princ "\n  AutoCAD 치수 스타일 LISP 로드됨")
+(princ "\n  AutoCAD 치수 스타일 LISP 로드됨 (수정본 v2)")
 (princ "\n========================================")
 (princ "\n  명령어: MYDIM")
 (princ "\n  설명: ISO-25 기반 치수 스타일 생성")
-(princ "\n  DCL 파일 자동 생성")
+(princ "\n  DCL 파일 자동 생성 (LISP 파일 경로 우선, 실패 시 임시 폴더)")
 (princ "\n========================================")
 (princ)
