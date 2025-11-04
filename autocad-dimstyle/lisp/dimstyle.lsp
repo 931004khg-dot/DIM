@@ -326,8 +326,9 @@
   (setvar "DIMLUNIT" 2)                              ; 단위 형식: 십진법 (2)
   (setvar "DIMDEC" 2)                                ; 정밀도: 0.00 (소수점 2자리)
   
-  ;; 소수 구분 기호 (문자열로 설정)
-  (setvar "DIMDSEP" (ascii "."))                     ; 소수 구분 기호: . (점)
+  ;; 소수 구분 기호 - 버전에 따라 설정 방식이 다름
+  ;; AutoCAD 2023에서는 이 변수를 setvar로 설정할 수 없을 수 있음
+  ;; (setvar "DIMDSEP" 46)
   
   (setvar "DIMRND" 0)                                ; 반올림: 0
   
