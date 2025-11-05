@@ -343,23 +343,43 @@
                 
                 (if pt3
                   (progn
-                    ;; DIM 명령어와 동일한 방식으로 치수선 위치 계산
-                    ;; pt3 방향으로 300 거리만큼 떨어진 위치
+                    ;; pt1과 pt2의 중간점 계산
+                    (setq mid_x (/ (+ (car pt1) (car pt2)) 2.0))
+                    (setq mid_y (/ (+ (cadr pt1) (cadr pt2)) 2.0))
+                    (setq mid_pt (list mid_x mid_y))
                     
-                    ;; 선택된 치수 타입에 따라 명령어 실행
-                    (if (= *dim_type* "0")
+                    ;; 중간점에서 pt3으로 향하는 방향 벡터 계산
+                    (setq dir_x (- (car pt3) mid_x))
+                    (setq dir_y (- (cadr pt3) mid_y))
+                    (setq dir_dist (sqrt (+ (* dir_x dir_x) (* dir_y dir_y))))
+                    
+                    ;; 방향 벡터를 단위 벡터로 정규화
+                    (if (> dir_dist 0.001)
                       (progn
-                        ;; 회전된 치수 (DIMLINEAR)
-                        ;; DIM 명령어처럼 pt3을 직접 전달하고 거리 300 입력
-                        (command "._DIMLINEAR" pt1 pt2 pt3 "300")
-                        (princ "\n회전된 치수 생성 완료. 다음 치수를 계속 그립니다...")
+                        (setq unit_dir_x (/ dir_x dir_dist))
+                        (setq unit_dir_y (/ dir_y dir_dist))
+                        
+                        ;; 중간점에서 pt3 방향으로 300 단위 떨어진 위치 계산
+                        (setq dim_pt (list 
+                          (+ mid_x (* unit_dir_x 300.0))
+                          (+ mid_y (* unit_dir_y 300.0))
+                        ))
+                        
+                        ;; 선택된 치수 타입에 따라 명령어 실행
+                        (if (= *dim_type* "0")
+                          (progn
+                            ;; 회전된 치수 (DIMLINEAR)
+                            (command "._DIMLINEAR" pt1 pt2 dim_pt)
+                            (princ "\n회전된 치수 생성 완료. 다음 치수를 계속 그립니다...")
+                          )
+                          (progn
+                            ;; 정렬된 치수 (DIMALIGNED)
+                            (command "._DIMALIGNED" pt1 pt2 dim_pt)
+                            (princ "\n정렬된 치수 생성 완료. 다음 치수를 계속 그립니다...")
+                          )
+                        )
                       )
-                      (progn
-                        ;; 정렬된 치수 (DIMALIGNED)
-                        ;; DIM 명령어처럼 pt3을 직접 전달하고 거리 300 입력
-                        (command "._DIMALIGNED" pt1 pt2 pt3 "300")
-                        (princ "\n정렬된 치수 생성 완료. 다음 치수를 계속 그립니다...")
-                      )
+                      (princ "\n방향 지정 지점이 중간점과 너무 가깝습니다.")
                     )
                   )
                   ;; pt3가 nil이면 사용자가 ESC를 누름
