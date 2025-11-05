@@ -343,26 +343,47 @@
                 
                 (if pt3
                   (progn
-                    ;; pt1과 pt2의 중간점 계산
-                    (setq mid_x (/ (+ (car pt1) (car pt2)) 2.0))
-                    (setq mid_y (/ (+ (cadr pt1) (cadr pt2)) 2.0))
-                    (setq mid_pt (list mid_x mid_y))
+                    ;; pt1-pt2 벡터 계산
+                    (setq dx (- (car pt2) (car pt1)))
+                    (setq dy (- (cadr pt2) (cadr pt1)))
+                    (setq dist (sqrt (+ (* dx dx) (* dy dy))))
                     
-                    ;; 중간점에서 pt3으로 향하는 방향 벡터 계산
-                    (setq dir_x (- (car pt3) mid_x))
-                    (setq dir_y (- (cadr pt3) mid_y))
-                    (setq dir_dist (sqrt (+ (* dir_x dir_x) (* dir_y dir_y))))
-                    
-                    ;; 방향 벡터를 단위 벡터로 정규화
-                    (if (> dir_dist 0.001)
+                    (if (> dist 0.001)
                       (progn
-                        (setq unit_dir_x (/ dir_x dir_dist))
-                        (setq unit_dir_y (/ dir_y dir_dist))
+                        ;; pt1-pt2의 단위 벡터
+                        (setq unit_x (/ dx dist))
+                        (setq unit_y (/ dy dist))
                         
-                        ;; 중간점에서 pt3 방향으로 300 단위 떨어진 위치 계산
+                        ;; pt1-pt2에 수직인 벡터 (왼쪽 방향: -dy, dx)
+                        (setq perp_x (- unit_y))
+                        (setq perp_y unit_x)
+                        
+                        ;; pt1-pt2의 중간점
+                        (setq mid_x (/ (+ (car pt1) (car pt2)) 2.0))
+                        (setq mid_y (/ (+ (cadr pt1) (cadr pt2)) 2.0))
+                        
+                        ;; 중간점에서 pt3으로의 벡터
+                        (setq to_pt3_x (- (car pt3) mid_x))
+                        (setq to_pt3_y (- (cadr pt3) mid_y))
+                        
+                        ;; pt3이 수직선의 어느 쪽에 있는지 판단 (외적 사용)
+                        ;; 외적 = perp_x * to_pt3_y - perp_y * to_pt3_x
+                        ;; 양수: pt3이 perp 방향, 음수: 반대 방향
+                        (setq cross_product (- (* perp_x to_pt3_y) (* perp_y to_pt3_x)))
+                        
+                        ;; pt3 방향에 따라 수직 벡터의 방향 결정
+                        (if (< cross_product 0)
+                          (progn
+                            ;; 반대 방향으로 전환
+                            (setq perp_x (- perp_x))
+                            (setq perp_y (- perp_y))
+                          )
+                        )
+                        
+                        ;; 중간점에서 수직 방향으로 300 단위 떨어진 위치
                         (setq dim_pt (list 
-                          (+ mid_x (* unit_dir_x 300.0))
-                          (+ mid_y (* unit_dir_y 300.0))
+                          (+ mid_x (* perp_x 300.0))
+                          (+ mid_y (* perp_y 300.0))
                         ))
                         
                         ;; 선택된 치수 타입에 따라 명령어 실행
@@ -379,7 +400,7 @@
                           )
                         )
                       )
-                      (princ "\n방향 지정 지점이 중간점과 너무 가깝습니다.")
+                      (princ "\n두 점이 너무 가깝습니다.")
                     )
                   )
                   ;; pt3가 nil이면 사용자가 ESC를 누름
