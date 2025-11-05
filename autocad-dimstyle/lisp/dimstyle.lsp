@@ -354,7 +354,7 @@
                         (setq unit_x (/ dx dist))
                         (setq unit_y (/ dy dist))
                         
-                        ;; pt1-pt2에 수직인 벡터 (왼쪽 방향: -dy, dx)
+                        ;; pt1-pt2에 수직인 벡터 (기본: 왼쪽 방향)
                         (setq perp_x (- unit_y))
                         (setq perp_y unit_x)
                         
@@ -366,13 +366,14 @@
                         (setq to_pt3_x (- (car pt3) mid_x))
                         (setq to_pt3_y (- (cadr pt3) mid_y))
                         
-                        ;; pt3이 수직선의 어느 쪽에 있는지 판단 (외적 사용)
-                        ;; 외적 = perp_x * to_pt3_y - perp_y * to_pt3_x
-                        ;; 양수: pt3이 perp 방향, 음수: 반대 방향
-                        (setq cross_product (- (* perp_x to_pt3_y) (* perp_y to_pt3_x)))
+                        ;; pt3이 수직선의 어느 쪽에 있는지 판단 (내적 사용)
+                        ;; 내적 = perp_x * to_pt3_x + perp_y * to_pt3_y
+                        ;; 양수: pt3이 perp 방향과 같은 쪽
+                        ;; 음수: pt3이 perp 방향과 반대 쪽
+                        (setq dot_product (+ (* perp_x to_pt3_x) (* perp_y to_pt3_y)))
                         
                         ;; pt3 방향에 따라 수직 벡터의 방향 결정
-                        (if (< cross_product 0)
+                        (if (< dot_product 0)
                           (progn
                             ;; 반대 방향으로 전환
                             (setq perp_x (- perp_x))
