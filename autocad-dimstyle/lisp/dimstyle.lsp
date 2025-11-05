@@ -299,31 +299,49 @@
       ;; 연속 치수 그리기 루프
       (setq continue_loop T)
       (while continue_loop
-        (princ "\n선형 치수 그리기...")  
-        (command "._DIMLINEAR")
+        ;; 치수 자동 그리기 (두 점만 입력)
+        (setq pt1 (getpoint "\n첫 번째 치수보조선 원점 또는 [ESC 종료]: "))
         
-        ;; 명령어가 종료될 때까지 대기
-        (while (> (getvar "CMDACTIVE") 0)
-          (command pause)
-        )
-        
-        ;; 사용자가 ESC를 누르거나 취소한 경우
-        (if (= (getvar "ERRNO") 52)  ; 52 = User cancelled
+        (if pt1
           (progn
-            (princ "\n치수 그리기 종료.")
-            (setq continue_loop nil)
-          )
-          ;; 계속 질문
-          (progn
-            (initget "Yes No")
-            (setq continue_choice (getkword "\n계속 그리기? [Yes/No] <Yes>: "))
-            (if (or (not continue_choice) (= continue_choice "Yes"))
-              (setq continue_loop T)
+            (setq pt2 (getpoint pt1 "\n두 번째 치수보조선 원점: "))
+            
+            (if pt2
+              (progn
+                ;; 치수선 위치 자동 계산 (세로 방향으로 고정 거리)
+                (setq dim_offset (* (atof *dim_scale*) 2.0))  ; 축척에 비례한 거리
+                
+                ;; pt1과 pt2의 중간점 계산
+                (setq mid_x (/ (+ (car pt1) (car pt2)) 2.0))
+                (setq mid_y (/ (+ (cadr pt1) (cadr pt2)) 2.0))
+                
+                ;; 수평 또는 수직 판단
+                (setq dx (abs (- (car pt2) (car pt1))))
+                (setq dy (abs (- (cadr pt2) (cadr pt1))))
+                
+                (if (> dx dy)
+                  ;; 수평 치수: 위쪽으로 오프셋
+                  (setq dim_pt (list mid_x (+ (max (cadr pt1) (cadr pt2)) dim_offset)))
+                  ;; 수직 치수: 오른쪽으로 오프셋
+                  (setq dim_pt (list (+ (max (car pt1) (car pt2)) dim_offset) mid_y))
+                )
+                
+                ;; DIMLINEAR 명령어 실행 (세 점 자동 입력)
+                (command "._DIMLINEAR" pt1 pt2 dim_pt)
+                
+                (princ "\n치수 생성 완료. 다음 치수를 계속 그립니다...")
+              )
+              ;; pt2가 nil이면 사용자가 ESC를 누름
               (progn
                 (princ "\n치수 그리기 종료.")
                 (setq continue_loop nil)
               )
             )
+          )
+          ;; pt1이 nil이면 사용자가 ESC를 누르거나 Enter를 누름
+          (progn
+            (princ "\n치수 그리기 종료.")
+            (setq continue_loop nil)
           )
         )
       )
