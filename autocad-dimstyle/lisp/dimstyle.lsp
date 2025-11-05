@@ -351,10 +351,10 @@
   ;; ========================================
   
   ;; 맞춤 옵션
-  (setvar "DIMATFIT" 3)                 ; 문자 또는 화살표(최대로 맞춤): 3
+  (setvar "DIMATFIT" 2)                 ; 화살표를 먼저 이동 (2)
   
   ;; 문자 배치
-  (setvar "DIMTMOVE" 0)                 ; 치수선 외의 배치: 0
+  (setvar "DIMTMOVE" 1)                 ; 문자가 기본 위치에 없을 경우: 치수선 위에 지시선 추가 (1)
   
   ;; 치수 축척
   (setvar "DIMSCALE" (atof *dim_scale*))   ; 전체 축척: 20
@@ -367,7 +367,7 @@
   ;; ========================================
   
   ;; 선형 치수
-  (setvar "DIMLUNIT" 2)                 ; 단위 형식: 십진법 (2)
+  (setvar "DIMLUNIT" 6)                 ; 단위 형식: 십진법 + 천 단위 구분 기호 (6)
   (setvar "DIMDEC" 2)                   ; 정밀도: 0.00 (소수점 2자리)
   
   ;; [수정] 소수 구분 기호 (정수 0이 아닌 문자열 "."로 설정)
@@ -384,25 +384,6 @@
   ;; 12 (8+4)는 선행 0 (.5)과 후행 0 (12.5)을 모두 억제합니다.
   ;; ISO 표준은 선행 0을 표시(0.5)하므로, 후행 0만 억제하는 8을 사용합니다.
   (setvar "DIMZIN" 8)                    ; 후행 0 억제 (8)
-  
-  ;; 천 단위 구분 기호 설정 (1000 -> 1,000)
-  ;; DIMDSEP는 소수점 구분 기호이고, DIMSEP는 천 단위 구분 기호입니다.
-  ;; 하지만 DIMSEP는 존재하지 않으므로, DIMPOST를 사용해야 합니다.
-  ;; AutoCAD에서는 천 단위 구분을 위해 DIESEL 표현식을 사용합니다.
-  ;; 더 간단한 방법: DIMDSEP를 콤마로 설정하고 DIMDEC를 조정하면 안 됩니다.
-  ;; 올바른 방법: AutoLISP에서는 직접 천 단위 구분을 지원하지 않으므로
-  ;; DIMPOST를 사용하거나 치수 생성 후 수정해야 합니다.
-  ;; 현재는 DIMDSEP=","로 설정하여 천 단위 구분 효과를 냅니다.
-  ;; 하지만 이것은 소수점을 콤마로 바꾸는 것입니다.
-  ;; 올바른 접근: DIMPOST 사용 불가 (형식 제어 제한적)
-  ;; 해결책: 치수 텍스트 재정의 필요 (생성 후 처리)
-  ;; 임시 해결: 현재 AutoCAD는 천 단위 구분을 기본 지원하지 않음
-  ;; 대안: 필드 코드 사용하거나 LISP로 후처리
-  
-  ;; AutoCAD 천 단위 구분 기호는 Windows 지역 설정을 따르거나
-  ;; DIMPOST를 통한 DIESEL 표현식으로 처리해야 합니다.
-  ;; 여기서는 DIMDSEP를 기본 "."로 유지하고
-  ;; 치수 생성 후 텍스트를 수정하는 방식을 사용합니다.
   
   ;; 각도 치수
   (setvar "DIMAUNIT" 0)                 ; 단위 형식: 십진 도수 (0)
@@ -465,74 +446,21 @@
   (princ)
 )
 
-;;;; ============================================================================
-;;;; 치수 텍스트 후처리 함수 (천 단위 구분 기호 추가)
-;;;; ============================================================================
-(defun format_dimension_text (dim-obj / dim-text formatted-text)
-  ;; 치수 객체에서 측정값 가져오기
-  (setq dim-text (rtos (vlax-get-property dim-obj 'Measurement) 2 2))
-  ;; 천 단위 구분 기호 추가
-  (setq formatted-text (add_thousand_separator dim-text))
-  ;; 치수 텍스트 재정의
-  (vlax-put-property dim-obj 'TextOverride formatted-text)
-)
 
-(defun add_thousand_separator (num-str / int-part dec-part result i len)
-  ;; 문자열을 정수부와 소수부로 분리
-  (if (vl-string-search "." num-str)
-    (progn
-      (setq int-part (substr num-str 1 (vl-string-search "." num-str)))
-      (setq dec-part (substr num-str (+ (vl-string-search "." num-str) 1)))
-    )
-    (progn
-      (setq int-part num-str)
-      (setq dec-part nil)
-    )
-  )
-  
-  ;; 정수부에 천 단위 구분 기호 추가
-  (setq len (strlen int-part))
-  (setq result "")
-  (setq i 1)
-  
-  (while (<= i len)
-    (setq result (strcat (substr int-part i 1) result))
-    (if (and (> (- len i) 0) (= (rem (- len i) 3) 0))
-      (setq result (strcat "," result))
-    )
-    (setq i (+ i 1))
-  )
-  
-  ;; 소수부가 있으면 결합
-  (if dec-part
-    (strcat result "." dec-part)
-    result
-  )
-)
-
-;;;; ============================================================================
-;;;; 치수 생성 후 자동 포맷 적용 (이벤트 리액터)
-;;;; ============================================================================
-;; 주의: 이 방법은 복잡하므로, 사용자가 수동으로 치수 텍스트를 수정하거나
-;; 별도의 명령어로 처리하는 것을 권장합니다.
-;; 여기서는 치수 스타일 설정 후 사용자에게 안내 메시지만 제공합니다.
 
 ;;;; ============================================================================
 ;;;; 프로그램 로드 메시지
 ;;;; ============================================================================
 (princ "\n========================================")
-(princ "\n  AutoCAD 치수 스타일 LISP 로드됨 (v3)")
+(princ "\n  AutoCAD 치수 스타일 LISP 로드됨 (v4)")
 (princ "\n========================================")
 (princ "\n  명령어: MYDIM")
 (princ "\n  설명: ISO-25 기반 치수 스타일 생성")
 (princ "\n  - DCL 파일 자동 생성")
 (princ "\n  - 치수 레이어: !-치수 (빨간색)")
 (princ "\n  - 치수보조선 간격: 10")
-(princ "\n  - 천 단위 구분: 수동 편집 필요")
-(princ "\n========================================")
-(princ "\n  참고: AutoCAD는 기본적으로 천 단위 구분을")
-(princ "\n  지원하지 않습니다. 치수 생성 후 텍스트를")
-(princ "\n  더블클릭하여 수동으로 편집해주세요.")
-(princ "\n  (예: 1520 -> 1,520)")
+(princ "\n  - 천 단위 구분: 자동 적용 (1,520)")
+(princ "\n  - 맞춤: 화살표 우선 이동")
+(princ "\n  - 문자: 치수선 위 + 지시선")
 (princ "\n========================================")
 (princ)
