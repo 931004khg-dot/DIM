@@ -86,7 +86,7 @@
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"전체 축척 (DIMSCALE):\";" dcl_file)
-      (write-line "                width = 20;" dcl_file)
+      (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : edit_box {" dcl_file)
@@ -102,7 +102,7 @@
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"치수선 거리 (Y값):\";" dcl_file)
-      (write-line "                width = 20;" dcl_file)
+      (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
@@ -810,12 +810,14 @@
 ;;;; ============================================================================
 ;;;; MLEADER 스타일 생성 함수
 ;;;; ============================================================================
-(defun create_mleader_style (style-name /)
+(defun create_mleader_style (style-name / old_cmdecho)
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
-  ;; MLEADER 스타일 변수 설정
-  (setvar "CMLEADERSTYLE" style-name)
+  ;; 명령 에코 끄기
+  (setq old_cmdecho (getvar "CMDECHO"))
+  (setvar "CMDECHO" 0)
   
+  ;; MLEADER 스타일 변수 설정
   ;; 지시선 형식
   (setvar "CMLEADERTYPE" 1)              ; 직선
   
@@ -846,15 +848,23 @@
   ;; 축척
   (setvar "CMSCALE" (atof *dim_scale*))
   
-  ;; MLEADER 스타일 저장
+  ;; MLEADER 스타일 저장 (command 사용)
   (if (tblsearch "MLEADERSTYLE" style-name)
     (progn
       (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (덮어쓰기)"))
+      (command "._-MLEADERSTYLE" "_S" style-name "_Y")
     )
     (progn
       (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성됨"))
+      (command "._-MLEADERSTYLE" "_S" style-name)
     )
   )
+  
+  ;; 현재 MLEADER 스타일로 설정
+  (command "._-MLEADERSTYLE" "_R" style-name)
+  
+  ;; 명령 에코 복원
+  (setvar "CMDECHO" old_cmdecho)
   
   (princ "\n=== MLEADER 스타일 설정 완료 ===")
   (princ (strcat "\n  문자 높이: " *dim_text_height*))
