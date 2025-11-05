@@ -98,6 +98,21 @@
       (write-line "            : spacer { width = 1; }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
+      (write-line "        // 치수선 거리 (Y값)" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"치수선 거리 (Y값):\";" dcl_file)
+      (write-line "                width = 20;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                key = \"dim_distance_display\";" dcl_file)
+      (write-line "                width = 6;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : spacer { width = 1; }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
       (write-line "        // 문자 높이 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
@@ -182,6 +197,13 @@
       (write-line "    // 버튼" dcl_file)
       (write-line "    : row {" dcl_file)
       (write-line "        : spacer { width = 1; }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"create_leader\";" dcl_file)
+      (write-line "            label = \"지시선\";" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
       (write-line "        : button {" dcl_file)
       (write-line "            key = \"edit_advanced\";" dcl_file)
@@ -433,6 +455,9 @@
   ;; 액션 설정 - 치수선 거리 변경
   (action_tile "dim_distance" "(setq *dim_distance* $value)")
   
+  ;; 액션 설정 - 지시선 버튼
+  (action_tile "create_leader" "(setq result 3) (done_dialog 3)")
+  
   ;; 액션 설정 - 수정 버튼
   (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
   
@@ -462,6 +487,42 @@
   
   ;; 대화상자 표시 및 루프 (수정 버튼 처리)
   (setq result (start_dialog))
+  
+  ;; 지시선 버튼을 누른 경우 (result = 3)
+  (if (= result 3)
+    (progn
+      ;; 지시선 스타일 생성 및 적용 후 대화상자로 돌아가기
+      (unload_dialog dcl_id)
+      
+      ;; 마지막 사용 축척 및 거리 저장
+      (setq *last_dim_scale* *dim_scale*)
+      (setq *last_dim_distance* *dim_distance*)
+      
+      ;; 비율 계산
+      (setq scale_ratio (/ (atof *dim_scale*) base_scale))
+      
+      (if *custom_text_height*
+        (setq *dim_text_height* *custom_text_height*)
+        (setq *dim_text_height* (rtos (* base_text_height scale_ratio) 2 2))
+      )
+      (if *custom_arrow_size*
+        (setq *dim_arrow_size* *custom_arrow_size*)
+        (setq *dim_arrow_size* (rtos (* base_arrow_size scale_ratio) 2 2))
+      )
+      
+      ;; MLEADER 스타일 생성
+      (create_mleader_style "ISO-25-Custom")
+      
+      ;; 지시선 그리기
+      (princ "\n지시선 그리기 모드...")
+      (command "._MLEADER")
+      
+      ;; 완료 메시지
+      (princ "\n지시선 그리기 완료.")
+      (princ)
+      (exit)
+    )
+  )
   
   ;; 수정 버튼을 누른 경우 (result = 2)
   (while (= result 2)
@@ -632,6 +693,9 @@
       (setq dimstyle-name "ISO-25-Custom")
       (create_dimstyle dimstyle-name)
       
+      ;; MLEADER 스타일 생성
+      (create_mleader_style dimstyle-name)
+      
       ;; 연속 치수 그리기 (루프)
       (princ "\n치수 그리기 시작... (ESC로 종료)")
       (princ (strcat "\n현재 치수 스타일: " dimstyle-name))
@@ -740,6 +804,62 @@
     (princ "\n취소되었습니다.")
   )
   
+  (princ)
+)
+
+;;;; ============================================================================
+;;;; MLEADER 스타일 생성 함수
+;;;; ============================================================================
+(defun create_mleader_style (style-name /)
+  (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
+  
+  ;; MLEADER 스타일 변수 설정
+  (setvar "CMLEADERSTYLE" style-name)
+  
+  ;; 지시선 형식
+  (setvar "CMLEADERTYPE" 1)              ; 직선
+  
+  ;; 지시선 색상 (치수선과 동일 - ByLayer)
+  (setvar "CMLEADERCOLOR" 256)           ; ByLayer
+  
+  ;; 지시선 선종류 (치수선과 동일)
+  (setvar "CMLEADERLINETYPE" "ByLayer")
+  
+  ;; 화살표 (치수와 동일)
+  (setvar "CMLEADERARROWHEAD" "_Closed filled")
+  (setvar "CMLEADERARROWSIZE" (atof *dim_arrow_size*))
+  
+  ;; 문자 설정 (치수와 동일)
+  (setvar "CMTEXTSTYLE" "Standard")
+  (setvar "CMTEXTCOLOR" 7)               ; 흰색
+  (setvar "CMTEXTHEIGHT" (atof *dim_text_height*))
+  
+  ;; 문자 부착 설정
+  (setvar "CMTEXTATTACH" 1)              ; 수평 부착
+  (setvar "CMTEXTLEFT" 9)                ; 왼쪽 부착: 맨 아래 행에 밑줄
+  (setvar "CMTEXTRIGHT" 9)               ; 오른쪽 부착: 맨 아래 행에 밑줄
+  
+  ;; 착륙 거리
+  (setvar "CMLANDING" 1)                 ; 착륙 사용
+  (setvar "CMLANDINGGAP" (* (atof *dim_text_height*) 0.5))
+  
+  ;; 축척
+  (setvar "CMSCALE" (atof *dim_scale*))
+  
+  ;; MLEADER 스타일 저장
+  (if (tblsearch "MLEADERSTYLE" style-name)
+    (progn
+      (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (덮어쓰기)"))
+    )
+    (progn
+      (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성됨"))
+    )
+  )
+  
+  (princ "\n=== MLEADER 스타일 설정 완료 ===")
+  (princ (strcat "\n  문자 높이: " *dim_text_height*))
+  (princ (strcat "\n  화살표 크기: " *dim_arrow_size*))
+  (princ (strcat "\n  축척: " *dim_scale*))
   (princ)
 )
 
