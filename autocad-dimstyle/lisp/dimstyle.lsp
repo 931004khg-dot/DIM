@@ -17,9 +17,26 @@
   (setq *last_dim_scale* "20")  ; 기본값: 20
 )
 
-;; 마지막 사용 치수 타입 저장 (전역 변수)
-(if (not *last_dim_type*)
-  (setq *last_dim_type* "0")  ; 기본값: 0 = 회전된 치수 (DIMLINEAR)
+;; 마지막 사용 y값 (치수선 거리) 저장 (전역 변수)
+(if (not *last_dim_distance*)
+  (setq *last_dim_distance* "400")  ; 기본값: 400
+)
+
+;; 고급 옵션 저장 (전역 변수)
+(if (not *custom_text_height*)
+  (setq *custom_text_height* nil)  ; nil = 자동 계산
+)
+(if (not *custom_arrow_size*)
+  (setq *custom_arrow_size* nil)
+)
+(if (not *custom_ext_offset*)
+  (setq *custom_ext_offset* nil)
+)
+(if (not *custom_ext_extend*)
+  (setq *custom_ext_extend* nil)
+)
+(if (not *custom_text_gap*)
+  (setq *custom_text_gap* nil)
 )
 
 ;;;; ============================================================================
@@ -76,6 +93,20 @@
       (write-line "                key = \"dimscale\";" dcl_file)
       (write-line "                edit_width = 10;" dcl_file)
       (write-line "                value = \"20\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 치수선 거리 (Y값)" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"치수선 거리 (Y값):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"dim_distance\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "                value = \"400\";" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
@@ -165,6 +196,20 @@
       (write-line "        : spacer { width = 1; }" dcl_file)
       (write-line "        " dcl_file)
       (write-line "        : button {" dcl_file)
+      (write-line "            key = \"edit_advanced\";" dcl_file)
+      (write-line "            label = \"수정\";" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"reset\";" dcl_file)
+      (write-line "            label = \"리셋\";" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        : button {" dcl_file)
       (write-line "            key = \"accept\";" dcl_file)
       (write-line "            label = \"확인\";" dcl_file)
       (write-line "            is_default = true;" dcl_file)
@@ -180,6 +225,97 @@
       (write-line "            width = 12;" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
+      (write-line "        : spacer { width = 1; }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "}" dcl_file)
+      (write-line "" dcl_file)
+      (write-line "// ============================================================================" dcl_file)
+      (write-line "// 고급 옵션 수정 대화상자" dcl_file)
+      (write-line "// ============================================================================" dcl_file)
+      (write-line "" dcl_file)
+      (write-line "advanced_settings : dialog {" dcl_file)
+      (write-line "    label = \"고급 옵션 수정\";" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"문자 설정\";" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"문자 높이 (DIMTXT):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"adv_textheight\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"문자 간격 (DIMGAP):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"adv_textgap\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"화살표 설정\";" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"화살표 크기 (DIMASZ):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"adv_arrowsize\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : boxed_column {" dcl_file)
+      (write-line "        label = \"치수보조선 설정\";" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"간격띄우기 (DIMEXO):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"adv_extoffset\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        : row {" dcl_file)
+      (write-line "            : text {" dcl_file)
+      (write-line "                label = \"보조선 연장 (DIMEXE):\";" dcl_file)
+      (write-line "                width = 25;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : edit_box {" dcl_file)
+      (write-line "                key = \"adv_extextend\";" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "    }" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    spacer;" dcl_file)
+      (write-line "    " dcl_file)
+      (write-line "    : row {" dcl_file)
+      (write-line "        : spacer { width = 1; }" dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"accept\";" dcl_file)
+      (write-line "            label = \"확인\";" dcl_file)
+      (write-line "            is_default = true;" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
+      (write-line "        : button {" dcl_file)
+      (write-line "            key = \"cancel\";" dcl_file)
+      (write-line "            label = \"취소\";" dcl_file)
+      (write-line "            is_cancel = true;" dcl_file)
+      (write-line "            fixed_width = true;" dcl_file)
+      (write-line "            width = 12;" dcl_file)
+      (write-line "        }" dcl_file)
       (write-line "        : spacer { width = 1; }" dcl_file)
       (write-line "    }" dcl_file)
       (write-line "}" dcl_file)
@@ -231,7 +367,7 @@
   
   ;; 기본 축척 설정 (마지막 사용 값 불러오기)
   (setq *dim_scale* *last_dim_scale*)  ; 마지막 사용 축척
-  (setq *dim_type* *last_dim_type*)    ; 마지막 사용 치수 타입
+  (setq *dim_distance* *last_dim_distance*)  ; 마지막 사용 치수선 거리
   
   ;; ISO-25 표준 기준값 (축척 1:20 기준)
   (setq base_scale 20.0)           ; 기준 축척
@@ -243,42 +379,196 @@
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
+  (set_tile "dim_distance" *dim_distance*)
   
-  ;; 치수 타입 라디오 버튼 초기화
-  (if (= *dim_type* "0")
-    (set_tile "dim_linear" "1")   ; 회전된 치수 선택
-    (set_tile "dim_aligned" "1")  ; 정렬된 치수 선택
+  ;; 치수 타입 라디오 버튼 초기화 (항상 정렬된 치수가 기본)
+  (set_tile "dim_aligned" "1")  ; 정렬된 치수 기본 선택
+  (setq *dim_type* "1")          ; 기본값: 정렬된 치수
+  
+  ;; 계산된 값들을 표시 (사용자 정의값이 있으면 사용, 없으면 자동 계산)
+  (if *custom_text_height*
+    (set_tile "textheight" (rtos (atof *custom_text_height*) 2 2))
+    (set_tile "textheight" (rtos base_text_height 2 2))
   )
-  
-  ;; 계산된 값들을 표시 (읽기 전용)
-  (set_tile "textheight" (rtos base_text_height 2 2))
-  (set_tile "arrowsize" (rtos base_arrow_size 2 2))
-  (set_tile "extoffset" (rtos base_ext_offset 2 2))
-  (set_tile "extextend" (rtos base_ext_extend 2 2))
-  (set_tile "textgap" (rtos base_text_gap 2 3))
+  (if *custom_arrow_size*
+    (set_tile "arrowsize" (rtos (atof *custom_arrow_size*) 2 2))
+    (set_tile "arrowsize" (rtos base_arrow_size 2 2))
+  )
+  (if *custom_ext_offset*
+    (set_tile "extoffset" (rtos (atof *custom_ext_offset*) 2 2))
+    (set_tile "extoffset" (rtos base_ext_offset 2 2))
+  )
+  (if *custom_ext_extend*
+    (set_tile "extextend" (rtos (atof *custom_ext_extend*) 2 2))
+    (set_tile "extextend" (rtos base_ext_extend 2 2))
+  )
+  (if *custom_text_gap*
+    (set_tile "textgap" (rtos (atof *custom_text_gap*) 2 3))
+    (set_tile "textgap" (rtos base_text_gap 2 3))
+  )
   
   ;; 액션 설정 - 치수 타입 선택
   (action_tile "dim_linear" "(setq *dim_type* \"0\")")
   (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
   
-  ;; 액션 설정 - 전체 축척 변경 시 모든 값 재계산
+  ;; 액션 설정 - 전체 축척 변경 시 모든 값 재계산 (사용자 정의값이 없을 때만)
   (action_tile "dimscale" 
     "(progn
        (setq *dim_scale* $value)
-       (setq scale_ratio (/ (atof *dim_scale*) base_scale))
-       (set_tile \"textheight\" (rtos (* base_text_height scale_ratio) 2 2))
-       (set_tile \"arrowsize\" (rtos (* base_arrow_size scale_ratio) 2 2))
-       (set_tile \"extoffset\" (rtos (* base_ext_offset scale_ratio) 2 2))
-       (set_tile \"extextend\" (rtos (* base_ext_extend scale_ratio) 2 2))
-       (set_tile \"textgap\" (rtos (* base_text_gap scale_ratio) 2 3))
+       (if (not *custom_text_height*)
+         (progn
+           (setq scale_ratio (/ (atof *dim_scale*) base_scale))
+           (set_tile \"textheight\" (rtos (* base_text_height scale_ratio) 2 2))
+           (set_tile \"arrowsize\" (rtos (* base_arrow_size scale_ratio) 2 2))
+           (set_tile \"extoffset\" (rtos (* base_ext_offset scale_ratio) 2 2))
+           (set_tile \"extextend\" (rtos (* base_ext_extend scale_ratio) 2 2))
+           (set_tile \"textgap\" (rtos (* base_text_gap scale_ratio) 2 3))
+         )
+       )
+     )"
+  )
+  
+  ;; 액션 설정 - 치수선 거리 변경
+  (action_tile "dim_distance" "(setq *dim_distance* $value)")
+  
+  ;; 액션 설정 - 수정 버튼
+  (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
+  
+  ;; 액션 설정 - 리셋 버튼
+  (action_tile "reset"
+    "(progn
+       (setq *dim_scale* \"20\")
+       (setq *dim_distance* \"400\")
+       (setq *custom_text_height* nil)
+       (setq *custom_arrow_size* nil)
+       (setq *custom_ext_offset* nil)
+       (setq *custom_ext_extend* nil)
+       (setq *custom_text_gap* nil)
+       (set_tile \"dimscale\" \"20\")
+       (set_tile \"dim_distance\" \"400\")
+       (set_tile \"textheight\" (rtos base_text_height 2 2))
+       (set_tile \"arrowsize\" (rtos base_arrow_size 2 2))
+       (set_tile \"extoffset\" (rtos base_ext_offset 2 2))
+       (set_tile \"extextend\" (rtos base_ext_extend 2 2))
+       (set_tile \"textgap\" (rtos base_text_gap 2 3))
+       (princ \"\\n\\uae30\\ubcf8\\uac12\\uc73c\\ub85c \\ub9ac\\uc14b\\ub418\\uc5c8\\uc2b5\\ub2c8\\ub2e4.\")
      )"
   )
   
   (action_tile "accept" "(done_dialog 1)")
   (action_tile "cancel" "(done_dialog 0)")
   
-  ;; 대화상자 표시
+  ;; 대화상자 표시 및 루프 (수정 버튼 처리)
   (setq result (start_dialog))
+  
+  ;; 수정 버튼을 누른 경우 (result = 2)
+  (while (= result 2)
+    ;; 고급 설정 대화상자 열기
+    (if (not (new_dialog "advanced_settings" dcl_id))
+      (progn
+        (alert "고급 설정 대화상자를 열 수 없습니다!")
+        (setq result 0)
+      )
+      (progn
+        ;; 현재 값으로 초기화 (사용자 정의값이 있으면 사용, 없으면 자동 계산값)
+        (setq scale_ratio (/ (atof *dim_scale*) base_scale))
+        
+        (if *custom_text_height*
+          (set_tile "adv_textheight" *custom_text_height*)
+          (set_tile "adv_textheight" (rtos (* base_text_height scale_ratio) 2 2))
+        )
+        (if *custom_arrow_size*
+          (set_tile "adv_arrowsize" *custom_arrow_size*)
+          (set_tile "adv_arrowsize" (rtos (* base_arrow_size scale_ratio) 2 2))
+        )
+        (if *custom_ext_offset*
+          (set_tile "adv_extoffset" *custom_ext_offset*)
+          (set_tile "adv_extoffset" (rtos (* base_ext_offset scale_ratio) 2 2))
+        )
+        (if *custom_ext_extend*
+          (set_tile "adv_extextend" *custom_ext_extend*)
+          (set_tile "adv_extextend" (rtos (* base_ext_extend scale_ratio) 2 2))
+        )
+        (if *custom_text_gap*
+          (set_tile "adv_textgap" *custom_text_gap*)
+          (set_tile "adv_textgap" (rtos (* base_text_gap scale_ratio) 2 3))
+        )
+        
+        ;; 고급 설정 확인 버튼
+        (action_tile "accept"
+          "(progn
+             (setq *custom_text_height* (get_tile \"adv_textheight\"))
+             (setq *custom_arrow_size* (get_tile \"adv_arrowsize\"))
+             (setq *custom_ext_offset* (get_tile \"adv_extoffset\"))
+             (setq *custom_ext_extend* (get_tile \"adv_extextend\"))
+             (setq *custom_text_gap* (get_tile \"adv_textgap\"))
+             (done_dialog 3)
+           )"
+        )
+        (action_tile "cancel" "(done_dialog 0)")
+        
+        (setq adv_result (start_dialog))
+        
+        ;; 고급 설정 확인 후 메인 다이얼로그로 돌아가기
+        (if (= adv_result 3)
+          (progn
+            ;; 메인 다이얼로그 다시 열기
+            (if (not (new_dialog "dimstyle" dcl_id))
+              (progn
+                (alert "DCL 대화상자를 다시 열 수 없습니다!")
+                (setq result 0)
+              )
+              (progn
+                ;; 메인 다이얼로그 재초기화
+                (set_tile "dimscale" *dim_scale*)
+                (set_tile "dim_distance" *dim_distance*)
+                (set_tile "dim_aligned" "1")
+                (setq *dim_type* "1")
+                
+                ;; 업데이트된 값 표시
+                (set_tile "textheight" (rtos (atof *custom_text_height*) 2 2))
+                (set_tile "arrowsize" (rtos (atof *custom_arrow_size*) 2 2))
+                (set_tile "extoffset" (rtos (atof *custom_ext_offset*) 2 2))
+                (set_tile "extextend" (rtos (atof *custom_ext_extend*) 2 2))
+                (set_tile "textgap" (rtos (atof *custom_text_gap*) 2 3))
+                
+                ;; 액션 재설정
+                (action_tile "dim_linear" "(setq *dim_type* \"0\")")
+                (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
+                (action_tile "dimscale" "(setq *dim_scale* $value)")
+                (action_tile "dim_distance" "(setq *dim_distance* $value)")
+                (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
+                (action_tile "reset"
+                  "(progn
+                     (setq *dim_scale* \"20\")
+                     (setq *dim_distance* \"400\")
+                     (setq *custom_text_height* nil)
+                     (setq *custom_arrow_size* nil)
+                     (setq *custom_ext_offset* nil)
+                     (setq *custom_ext_extend* nil)
+                     (setq *custom_text_gap* nil)
+                     (set_tile \"dimscale\" \"20\")
+                     (set_tile \"dim_distance\" \"400\")
+                     (set_tile \"textheight\" (rtos base_text_height 2 2))
+                     (set_tile \"arrowsize\" (rtos base_arrow_size 2 2))
+                     (set_tile \"extoffset\" (rtos base_ext_offset 2 2))
+                     (set_tile \"extextend\" (rtos base_ext_extend 2 2))
+                     (set_tile \"textgap\" (rtos base_text_gap 2 3))
+                     (princ \"\\n\\uae30\\ubcf8\\uac12\\uc73c\\ub85c \\ub9ac\\uc14b\\ub418\\uc5c8\\uc2b5\\ub2c8\\ub2e4.\")
+                   )"
+                )
+                (action_tile "accept" "(done_dialog 1)")
+                (action_tile "cancel" "(done_dialog 0)")
+                
+                (setq result (start_dialog))
+              )
+            )
+          )
+          (setq result 0)  ; 고급 설정 취소 시
+        )
+      )
+    )
+  )
   
   (unload_dialog dcl_id)
   
@@ -305,17 +595,33 @@
       (setvar "CLAYER" "!-치수")
       (princ "\n현재 레이어: !-치수")
       
-      ;; 마지막 사용 축척 및 타입 저장
+      ;; 마지막 사용 축척 및 거리 저장
       (setq *last_dim_scale* *dim_scale*)
-      (setq *last_dim_type* *dim_type*)
+      (setq *last_dim_distance* *dim_distance*)
       
-      ;; 비율에 따라 모든 값 계산
+      ;; 비율에 따라 모든 값 계산 (사용자 정의값이 있으면 사용, 없으면 자동 계산)
       (setq scale_ratio (/ (atof *dim_scale*) base_scale))
-      (setq *dim_text_height* (rtos (* base_text_height scale_ratio) 2 2))
-      (setq *dim_arrow_size* (rtos (* base_arrow_size scale_ratio) 2 2))
-      (setq *dim_ext_offset* (rtos (* base_ext_offset scale_ratio) 2 2))
-      (setq *dim_ext_extend* (rtos (* base_ext_extend scale_ratio) 2 2))
-      (setq *dim_text_gap* (rtos (* base_text_gap scale_ratio) 2 3))
+      
+      (if *custom_text_height*
+        (setq *dim_text_height* *custom_text_height*)
+        (setq *dim_text_height* (rtos (* base_text_height scale_ratio) 2 2))
+      )
+      (if *custom_arrow_size*
+        (setq *dim_arrow_size* *custom_arrow_size*)
+        (setq *dim_arrow_size* (rtos (* base_arrow_size scale_ratio) 2 2))
+      )
+      (if *custom_ext_offset*
+        (setq *dim_ext_offset* *custom_ext_offset*)
+        (setq *dim_ext_offset* (rtos (* base_ext_offset scale_ratio) 2 2))
+      )
+      (if *custom_ext_extend*
+        (setq *dim_ext_extend* *custom_ext_extend*)
+        (setq *dim_ext_extend* (rtos (* base_ext_extend scale_ratio) 2 2))
+      )
+      (if *custom_text_gap*
+        (setq *dim_text_gap* *custom_text_gap*)
+        (setq *dim_text_gap* (rtos (* base_text_gap scale_ratio) 2 3))
+      )
       
       ;; 치수 스타일 생성
       (setq dimstyle-name "ISO-25-Custom")
@@ -381,10 +687,10 @@
                           )
                         )
                         
-                        ;; 중간점에서 수직 방향으로 300 단위 떨어진 위치
+                        ;; 중간점에서 수직 방향으로 사용자 지정 거리만큼 떨어진 위치
                         (setq dim_pt (list 
-                          (+ mid_x (* perp_x 300.0))
-                          (+ mid_y (* perp_y 300.0))
+                          (+ mid_x (* perp_x (atof *dim_distance*)))
+                          (+ mid_y (* perp_y (atof *dim_distance*)))
                         ))
                         
                         ;; 선택된 치수 타입에 따라 명령어 실행
