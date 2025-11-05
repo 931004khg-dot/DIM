@@ -56,31 +56,31 @@
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
-      (write-line "        // 문자 높이" dcl_file)
+      (write-line "        // 문자 높이 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"문자 높이 (DIMTXT):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : edit_box {" dcl_file)
+      (write-line "            : text {" dcl_file)
       (write-line "                key = \"textheight\";" dcl_file)
-      (write-line "                edit_width = 10;" dcl_file)
-      (write-line "                value = \"3\";" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
-      (write-line "        // 화살표 크기" dcl_file)
+      (write-line "        // 화살표 크기 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"화살표 크기 (DIMASZ):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : edit_box {" dcl_file)
+      (write-line "            : text {" dcl_file)
       (write-line "                key = \"arrowsize\";" dcl_file)
-      (write-line "                edit_width = 10;" dcl_file)
-      (write-line "                value = \"2.5\";" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "    }" dcl_file)
@@ -88,31 +88,31 @@
       (write-line "    : boxed_column {" dcl_file)
       (write-line "        label = \"치수보조선 설정\";" dcl_file)
       (write-line "        " dcl_file)
-      (write-line "        // 치수보조선 간격띄우기" dcl_file)
+      (write-line "        // 치수보조선 간격띄우기 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"간격띄우기 (DIMEXO):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : edit_box {" dcl_file)
+      (write-line "            : text {" dcl_file)
       (write-line "                key = \"extoffset\";" dcl_file)
-      (write-line "                edit_width = 10;" dcl_file)
-      (write-line "                value = \"10\";" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
-      (write-line "        // 치수보조선 연장" dcl_file)
+      (write-line "        // 치수보조선 연장 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"보조선 연장 (DIMEXE):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : edit_box {" dcl_file)
+      (write-line "            : text {" dcl_file)
       (write-line "                key = \"extextend\";" dcl_file)
-      (write-line "                edit_width = 10;" dcl_file)
-      (write-line "                value = \"1.25\";" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "    }" dcl_file)
@@ -120,17 +120,17 @@
       (write-line "    : boxed_column {" dcl_file)
       (write-line "        label = \"문자 설정\";" dcl_file)
       (write-line "        " dcl_file)
-      (write-line "        // 문자와 치수선 간격" dcl_file)
+      (write-line "        // 문자와 치수선 간격 (자동 계산)" dcl_file)
       (write-line "        : row {" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"문자 간격 (DIMGAP):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : edit_box {" dcl_file)
+      (write-line "            : text {" dcl_file)
       (write-line "                key = \"textgap\";" dcl_file)
-      (write-line "                edit_width = 10;" dcl_file)
-      (write-line "                value = \"0.625\";" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "    }" dcl_file)
@@ -175,7 +175,7 @@
 ;;;; ============================================================================
 ;;;; 메인 명령어 함수
 ;;;; ============================================================================
-(defun C:MYDIM (/ dcl_id result dimstyle-name dcl_path)
+(defun C:DM (/ dcl_id result dimstyle-name dcl_path base_scale)
   (princ "\n치수 스타일 생성 프로그램 시작...")
   
   ;; DCL 파일 자동 생성
@@ -206,29 +206,39 @@
     )
   )
   
-  ;; 기본값 설정 (ISO-25 표준)
-  (setq *dim_scale* "20")        ; 치수 전체 축척 (ISO-25 표준: 20)
-  (setq *dim_text_height* "3")     ; 문자 높이 (ISO-25 표준: 3)
-  (setq *dim_arrow_size* "2.5")   ; 화살표 크기
-  (setq *dim_ext_offset* "10") ; 치수보조선 간격띄우기
-  (setq *dim_ext_extend* "1.25")  ; 치수보조선 연장
-  (setq *dim_text_gap* "0.625")   ; 문자와 치수선 간격
+  ;; 기본 축척 설정 (ISO-25 표준: 1:20)
+  (setq *dim_scale* "20")        ; 치수 전체 축척 (사용자 입력)
   
-  ;; DCL 컨트롤 초기화
+  ;; ISO-25 표준 기준값 (축척 1:20 기준)
+  (setq base_scale 20.0)           ; 기준 축척
+  (setq base_text_height 3.0)      ; 기준 문자 높이
+  (setq base_arrow_size 2.5)       ; 기준 화살표 크기
+  (setq base_ext_offset 10.0)      ; 기준 치수보조선 간격
+  (setq base_ext_extend 1.25)      ; 기준 치수보조선 연장
+  (setq base_text_gap 0.625)       ; 기준 문자 간격
+  
+  ;; DCL 컨트롤 초기화 (전체 축척만 표시)
   (set_tile "dimscale" *dim_scale*)
-  (set_tile "textheight" *dim_text_height*)
-  (set_tile "arrowsize" *dim_arrow_size*)
-  (set_tile "extoffset" *dim_ext_offset*)
-  (set_tile "extextend" *dim_ext_extend*)
-  (set_tile "textgap" *dim_text_gap*)
   
-  ;; 액션 설정
-  (action_tile "dimscale" "(setq *dim_scale* $value)")
-  (action_tile "textheight" "(setq *dim_text_height* $value)")
-  (action_tile "arrowsize" "(setq *dim_arrow_size* $value)")
-  (action_tile "extoffset" "(setq *dim_ext_offset* $value)")
-  (action_tile "extextend" "(setq *dim_ext_extend$ $value)")
-  (action_tile "textgap" "(setq *dim_text_gap* $value)")
+  ;; 계산된 값들을 표시 (읽기 전용)
+  (set_tile "textheight" (rtos base_text_height 2 2))
+  (set_tile "arrowsize" (rtos base_arrow_size 2 2))
+  (set_tile "extoffset" (rtos base_ext_offset 2 2))
+  (set_tile "extextend" (rtos base_ext_extend 2 2))
+  (set_tile "textgap" (rtos base_text_gap 2 3))
+  
+  ;; 액션 설정 - 전체 축척 변경 시 모든 값 재계산
+  (action_tile "dimscale" 
+    "(progn
+       (setq *dim_scale* $value)
+       (setq scale_ratio (/ (atof *dim_scale*) base_scale))
+       (set_tile \"textheight\" (rtos (* base_text_height scale_ratio) 2 2))
+       (set_tile \"arrowsize\" (rtos (* base_arrow_size scale_ratio) 2 2))
+       (set_tile \"extoffset\" (rtos (* base_ext_offset scale_ratio) 2 2))
+       (set_tile \"extextend\" (rtos (* base_ext_extend scale_ratio) 2 2))
+       (set_tile \"textgap\" (rtos (* base_text_gap scale_ratio) 2 3))
+     )"
+  )
   
   (action_tile "accept" "(done_dialog 1)")
   (action_tile "cancel" "(done_dialog 0)")
@@ -260,6 +270,14 @@
       ;; 현재 레이어를 '!-치수'로 변경
       (setvar "CLAYER" "!-치수")
       (princ "\n현재 레이어: !-치수")
+      
+      ;; 비율에 따라 모든 값 계산
+      (setq scale_ratio (/ (atof *dim_scale*) base_scale))
+      (setq *dim_text_height* (rtos (* base_text_height scale_ratio) 2 2))
+      (setq *dim_arrow_size* (rtos (* base_arrow_size scale_ratio) 2 2))
+      (setq *dim_ext_offset* (rtos (* base_ext_offset scale_ratio) 2 2))
+      (setq *dim_ext_extend* (rtos (* base_ext_extend scale_ratio) 2 2))
+      (setq *dim_text_gap* (rtos (* base_text_gap scale_ratio) 2 3))
       
       ;; 치수 스타일 생성
       (setq dimstyle-name "ISO-25-Custom")
@@ -451,16 +469,5 @@
 ;;;; ============================================================================
 ;;;; 프로그램 로드 메시지
 ;;;; ============================================================================
-(princ "\n========================================")
-(princ "\n  AutoCAD 치수 스타일 LISP 로드됨 (v4)")
-(princ "\n========================================")
-(princ "\n  명령어: MYDIM")
-(princ "\n  설명: ISO-25 기반 치수 스타일 생성")
-(princ "\n  - DCL 파일 자동 생성")
-(princ "\n  - 치수 레이어: !-치수 (빨간색)")
-(princ "\n  - 치수보조선 간격: 10")
-(princ "\n  - 천 단위 구분: 자동 적용 (1,520)")
-(princ "\n  - 맞춤: 화살표 우선 이동")
-(princ "\n  - 문자: 치수선 위 + 지시선")
-(princ "\n========================================")
+(princ "\nDM 로드됨")
 (princ)
