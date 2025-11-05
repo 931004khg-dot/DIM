@@ -381,7 +381,7 @@
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
-  (set_tile "dim_distance" *dim_distance*)
+  (set_tile "dim_distance_display" *dim_distance*)
   
   ;; 치수 타입 라디오 버튼 초기화 (항상 정렬된 치수가 기본)
   (set_tile "dim_aligned" "1")  ; 정렬된 치수 기본 선택
@@ -527,7 +527,7 @@
               (progn
                 ;; 메인 다이얼로그 재초기화
                 (set_tile "dimscale" *dim_scale*)
-                (set_tile "dim_distance" *dim_distance*)
+                (set_tile "dim_distance_display" *dim_distance*)
                 (set_tile "dim_aligned" "1")
                 (setq *dim_type* "1")
                 
@@ -542,7 +542,6 @@
                 (action_tile "dim_linear" "(setq *dim_type* \"0\")")
                 (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
                 (action_tile "dimscale" "(setq *dim_scale* $value)")
-                (action_tile "dim_distance" "(setq *dim_distance* $value)")
                 (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
                 (action_tile "reset"
                   "(progn
