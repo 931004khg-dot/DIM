@@ -12,6 +12,11 @@
   )
 )
 
+;; 마지막 사용 축척 저장 (전역 변수)
+(if (not *last_dim_scale*)
+  (setq *last_dim_scale* "20")  ; 기본값: 20
+)
+
 ;;;; ============================================================================
 ;;;; DCL 파일 생성 함수
 ;;;; ============================================================================
@@ -206,8 +211,8 @@
     )
   )
   
-  ;; 기본 축척 설정 (ISO-25 표준: 1:20)
-  (setq *dim_scale* "20")        ; 치수 전체 축척 (사용자 입력)
+  ;; 기본 축척 설정 (마지막 사용 값 불러오기)
+  (setq *dim_scale* *last_dim_scale*)  ; 마지막 사용 축척
   
   ;; ISO-25 표준 기준값 (축척 1:20 기준)
   (setq base_scale 20.0)           ; 기준 축척
@@ -271,6 +276,9 @@
       (setvar "CLAYER" "!-치수")
       (princ "\n현재 레이어: !-치수")
       
+      ;; 마지막 사용 축척 저장
+      (setq *last_dim_scale* *dim_scale*)
+      
       ;; 비율에 따라 모든 값 계산
       (setq scale_ratio (/ (atof *dim_scale*) base_scale))
       (setq *dim_text_height* (rtos (* base_text_height scale_ratio) 2 2))
@@ -283,12 +291,42 @@
       (setq dimstyle-name "ISO-25-Custom")
       (create_dimstyle dimstyle-name)
       
-      ;; 치수 그리기 시작
-      (princ "\n치수를 그리려면 DIM 명령어를 사용하세요.")
+      ;; 연속 치수 그리기 (루프)
+      (princ "\n치수 그리기 시작... (ESC로 종료)")
       (princ (strcat "\n현재 치수 스타일: " dimstyle-name))
+      (princ (strcat "\n전체 축척: " *dim_scale*))
       
-      ;; 선형 치수 그리기 시작
-      (command "._DIMLINEAR")
+      ;; 연속 치수 그리기 루프
+      (setq continue_loop T)
+      (while continue_loop
+        (princ "\n선형 치수 그리기...")  
+        (command "._DIMLINEAR")
+        
+        ;; 명령어가 종료될 때까지 대기
+        (while (> (getvar "CMDACTIVE") 0)
+          (command pause)
+        )
+        
+        ;; 사용자가 ESC를 누르거나 취소한 경우
+        (if (= (getvar "ERRNO") 52)  ; 52 = User cancelled
+          (progn
+            (princ "\n치수 그리기 종료.")
+            (setq continue_loop nil)
+          )
+          ;; 계속 질문
+          (progn
+            (initget "Yes No")
+            (setq continue_choice (getkword "\n계속 그리기? [Yes/No] <Yes>: "))
+            (if (or (not continue_choice) (= continue_choice "Yes"))
+              (setq continue_loop T)
+              (progn
+                (princ "\n치수 그리기 종료.")
+                (setq continue_loop nil)
+              )
+            )
+          )
+        )
+      )
     )
     (princ "\n취소되었습니다.")
   )
@@ -470,4 +508,7 @@
 ;;;; 프로그램 로드 메시지
 ;;;; ============================================================================
 (princ "\nDM 로드됨")
+(if *last_dim_scale*
+  (princ (strcat " (마지막 축척: " *last_dim_scale* ")"))
+)
 (princ)
