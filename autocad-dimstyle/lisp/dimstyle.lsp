@@ -17,6 +17,11 @@
   (setq *last_dim_scale* "20")  ; 기본값: 20
 )
 
+;; 마지막 사용 치수 타입 저장 (전역 변수)
+(if (not *last_dim_type*)
+  (setq *last_dim_type* "0")  ; 기본값: 0 = 회전된 치수 (DIMLINEAR)
+)
+
 ;;;; ============================================================================
 ;;;; DCL 파일 생성 함수
 ;;;; ============================================================================
@@ -46,6 +51,19 @@
       (write-line "    " dcl_file)
       (write-line "    : boxed_column {" dcl_file)
       (write-line "        label = \"기본 설정 (ISO-25 표준)\";" dcl_file)
+      (write-line "        " dcl_file)
+      (write-line "        // 치수 타입 선택" dcl_file)
+      (write-line "        : boxed_radio_column {" dcl_file)
+      (write-line "            label = \"치수 타입\";" dcl_file)
+      (write-line "            : radio_button {" dcl_file)
+      (write-line "                key = \"dim_linear\";" dcl_file)
+      (write-line "                label = \"회전된 치수 (DIMLINEAR)\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "            : radio_button {" dcl_file)
+      (write-line "                key = \"dim_aligned\";" dcl_file)
+      (write-line "                label = \"정렬된 치수 (DIMALIGNED)\";" dcl_file)
+      (write-line "            }" dcl_file)
+      (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
       (write-line "        // 전체 축척" dcl_file)
       (write-line "        : row {" dcl_file)
@@ -213,6 +231,7 @@
   
   ;; 기본 축척 설정 (마지막 사용 값 불러오기)
   (setq *dim_scale* *last_dim_scale*)  ; 마지막 사용 축척
+  (setq *dim_type* *last_dim_type*)    ; 마지막 사용 치수 타입
   
   ;; ISO-25 표준 기준값 (축척 1:20 기준)
   (setq base_scale 20.0)           ; 기준 축척
@@ -222,8 +241,14 @@
   (setq base_ext_extend 1.25)      ; 기준 치수보조선 연장
   (setq base_text_gap 0.625)       ; 기준 문자 간격
   
-  ;; DCL 컨트롤 초기화 (전체 축척만 표시)
+  ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
+  
+  ;; 치수 타입 라디오 버튼 초기화
+  (if (= *dim_type* "0")
+    (set_tile "dim_linear" "1")   ; 회전된 치수 선택
+    (set_tile "dim_aligned" "1")  ; 정렬된 치수 선택
+  )
   
   ;; 계산된 값들을 표시 (읽기 전용)
   (set_tile "textheight" (rtos base_text_height 2 2))
@@ -231,6 +256,10 @@
   (set_tile "extoffset" (rtos base_ext_offset 2 2))
   (set_tile "extextend" (rtos base_ext_extend 2 2))
   (set_tile "textgap" (rtos base_text_gap 2 3))
+  
+  ;; 액션 설정 - 치수 타입 선택
+  (action_tile "dim_linear" "(setq *dim_type* \"0\")")
+  (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
   
   ;; 액션 설정 - 전체 축척 변경 시 모든 값 재계산
   (action_tile "dimscale" 
@@ -276,8 +305,9 @@
       (setvar "CLAYER" "!-치수")
       (princ "\n현재 레이어: !-치수")
       
-      ;; 마지막 사용 축척 저장
+      ;; 마지막 사용 축척 및 타입 저장
       (setq *last_dim_scale* *dim_scale*)
+      (setq *last_dim_type* *dim_type*)
       
       ;; 비율에 따라 모든 값 계산
       (setq scale_ratio (/ (atof *dim_scale*) base_scale))
@@ -336,10 +366,19 @@
                       (+ mid_y (* perp_y dim_offset))
                     ))
                     
-                    ;; DIMALIGNED 명령어 실행 (정렬 치수)
-                    (command "._DIMALIGNED" pt1 pt2 dim_pt)
-                    
-                    (princ "\n치수 생성 완료. 다음 치수를 계속 그립니다...")
+                    ;; 선택된 치수 타입에 따라 명령어 실행
+                    (if (= *dim_type* "0")
+                      (progn
+                        ;; 회전된 치수 (DIMLINEAR)
+                        (command "._DIMLINEAR" pt1 pt2 dim_pt)
+                        (princ "\n회전된 치수 생성 완료. 다음 치수를 계속 그립니다...")
+                      )
+                      (progn
+                        ;; 정렬된 치수 (DIMALIGNED)
+                        (command "._DIMALIGNED" pt1 pt2 dim_pt)
+                        (princ "\n정렬된 치수 생성 완료. 다음 치수를 계속 그립니다...")
+                      )
+                    )
                   )
                   (princ "\n두 점이 너무 가깝습니다. 다시 선택하세요.")
                 )
