@@ -821,7 +821,7 @@
 ;;;; ============================================================================
 ;;;; MLEADER 스타일 생성 함수
 ;;;; ============================================================================
-(defun create_mleader_style (style-name / old_cmdecho old_osmode)
+(defun create_mleader_style (style-name / old_cmdecho old_osmode result)
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
   ;; 명령 에코 및 OSMODE 끄기
@@ -830,14 +830,16 @@
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  ;; MLEADER 스타일이 존재하는지 확인
-  (if (not (tblsearch "MLEADERSTYLE" style-name))
-    (progn
-      ;; 스타일이 없으면 복사로 생성 (Standard 기반)
-      (command "._-MLEADERSTYLE" "_N" style-name "_C" "Standard" "")
-      (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성됨"))
-    )
-    (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (수정)"))
+  ;; MLEADER 스타일 생성 (Standard 기반 복사)
+  ;; tblsearch는 MLEADERSTYLE 테이블을 지원하지 않으므로
+  ;; 그냥 생성하고 이미 존재하면 무시됨
+  (setq result (vl-catch-all-apply 'command 
+    (list "._-MLEADERSTYLE" "_N" style-name "_C" "Standard" "")
+  ))
+  
+  (if (vl-catch-all-error-p result)
+    (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (계속)"))
+    (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성됨"))
   )
   
   ;; 생성된 스타일을 현재 스타일로 설정
@@ -849,7 +851,7 @@
   
   (princ "\n=== MLEADER 스타일 생성 완료 ===")
   (princ (strcat "\n  스타일 이름: " style-name))
-  (princ (strcat "\n  (치수 스타일 " style-name "과 연동)"))
+  (princ (strcat "\n  (치수 스타일 " style-name "과 이름만 같고 별개 스타일)"))
   (princ)
 )
 
