@@ -224,7 +224,7 @@
   (setq base_arrow_size 2.5)
   (setq base_ext_offset 10.0)
   (setq base_ext_extend 1.25)
-  (setq base_text_gap 0.625)
+  (setq base_text_gap 0.5)  ; MLEADER 착지 간격 (스크린샷 2: 0.5)
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
@@ -673,17 +673,24 @@
        ;; 지시선 색상: ByLayer (256)
        (vla-put-LeaderLineColor new_style (vlax-make-variant 256 vlax-vbInteger))
        
-       ;; 착지 간격 (기본: 0.625 × DIMSCALE, DIMGAP과 동일)
+       ;; 착지 간격 (스크린샷 2: 0.5 × DIMSCALE)
        (vla-put-LandingGap new_style final-text-gap)
        
-       ;; 수직 부착: 0 (위쪽 부착)
+       ;; 지시선 연결: 수평 부착 (스크린샷 2)
+       ;; TextAttachmentDirection: 0=수평, 1=수직
        (vla-put-TextAttachmentDirection new_style 0)
        
-       ;; 연결선 길이 (Dogleg): 0.36 × DIMSCALE (스크린샷 참조)
+       ;; 연결선 길이 (Dogleg): 0.36 × DIMSCALE (스크린샷 1: 연결선 거리 설정 = 0.36)
        (vla-put-DoglegLength new_style (* 0.36 (atof *dim_scale*)))
        
-       ;; 최대 지시선 점 수: 2 (스크린샷 참조)
+       ;; 최대 지시선 점 수: 2 (스크린샷 1)
        (vla-put-MaxLeaderSegmentsPoints new_style 2)
+       
+       ;; 자동 연결선 포함: 체크됨 (스크린샷 1)
+       (vla-put-EnableDogleg new_style :vlax-true)
+       
+       ;; 첫 번째/두 번째 세그먼트 각도 제약 없음 (스크린샷 1: 0, 0)
+       ;; 기본값 사용
        
        ;; 지시선 선종류: ByLayer
        (if (= (type (vla-get-LeaderLineType new_style)) 'INT)
@@ -711,9 +718,10 @@
       (setvar "CMLEADERSTYLE" style-name)
       
       (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-      (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
-      (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
-      (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+      (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2) " (기본: 3)"))
+      (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2) " (기본: 2.5)"))
+      (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2) " (기본: 0.5)"))
+      (princ (strcat "\n  연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2) " (기본: 0.36)"))
     )
   )
   
