@@ -87,15 +87,15 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"전체 축척 (DIMSCALE):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : edit_box {" dcl_file)
       (write-line "                key = \"dimscale\";" dcl_file)
-      (write-line "                edit_width = 6;" dcl_file)
+      (write-line "                edit_width = 10;" dcl_file)
       (write-line "                value = \"20\";" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : spacer { width = 1; }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
       (write-line "        // 치수선 거리 (Y값)" dcl_file)
@@ -103,14 +103,15 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"치수선 거리 (Y값):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"dim_distance_display\";" dcl_file)
-      (write-line "                width = 6;" dcl_file)
+      (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
-      (write-line "            : spacer { width = 1; }" dcl_file)
       (write-line "        }" dcl_file)
       (write-line "        " dcl_file)
       (write-line "        // 문자 높이 (자동 계산)" dcl_file)
@@ -118,11 +119,13 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"문자 높이 (DIMTXT):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"textheight\";" dcl_file)
       (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
@@ -132,11 +135,13 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"화살표 크기 (DIMASZ):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"arrowsize\";" dcl_file)
       (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
@@ -150,11 +155,13 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"간격띄우기 (DIMEXO):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"extoffset\";" dcl_file)
       (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
@@ -164,11 +171,13 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"보조선 연장 (DIMEXE):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"extextend\";" dcl_file)
       (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
@@ -182,11 +191,13 @@
       (write-line "            : text {" dcl_file)
       (write-line "                label = \"문자 간격 (DIMGAP):\";" dcl_file)
       (write-line "                width = 25;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "            : text {" dcl_file)
       (write-line "                key = \"textgap\";" dcl_file)
       (write-line "                width = 10;" dcl_file)
+      (write-line "                fixed_width = true;" dcl_file)
       (write-line "                alignment = left;" dcl_file)
       (write-line "            }" dcl_file)
       (write-line "        }" dcl_file)
@@ -810,66 +821,35 @@
 ;;;; ============================================================================
 ;;;; MLEADER 스타일 생성 함수
 ;;;; ============================================================================
-(defun create_mleader_style (style-name / old_cmdecho)
+(defun create_mleader_style (style-name / old_cmdecho old_osmode)
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
-  ;; 명령 에코 끄기
+  ;; 명령 에코 및 OSMODE 끄기
   (setq old_cmdecho (getvar "CMDECHO"))
+  (setq old_osmode (getvar "OSMODE"))
   (setvar "CMDECHO" 0)
+  (setvar "OSMODE" 0)
   
-  ;; MLEADER 스타일 변수 설정
-  ;; 지시선 형식
-  (setvar "CMLEADERTYPE" 1)              ; 직선
-  
-  ;; 지시선 색상 (치수선과 동일 - ByLayer)
-  (setvar "CMLEADERCOLOR" 256)           ; ByLayer
-  
-  ;; 지시선 선종류 (치수선과 동일)
-  (setvar "CMLEADERLINETYPE" "ByLayer")
-  
-  ;; 화살표 (치수와 동일)
-  (setvar "CMLEADERARROWHEAD" "_Closed filled")
-  (setvar "CMLEADERARROWSIZE" (atof *dim_arrow_size*))
-  
-  ;; 문자 설정 (치수와 동일)
-  (setvar "CMTEXTSTYLE" "Standard")
-  (setvar "CMTEXTCOLOR" 7)               ; 흰색
-  (setvar "CMTEXTHEIGHT" (atof *dim_text_height*))
-  
-  ;; 문자 부착 설정
-  (setvar "CMTEXTATTACH" 1)              ; 수평 부착
-  (setvar "CMTEXTLEFT" 9)                ; 왼쪽 부착: 맨 아래 행에 밑줄
-  (setvar "CMTEXTRIGHT" 9)               ; 오른쪽 부착: 맨 아래 행에 밑줄
-  
-  ;; 착륙 거리
-  (setvar "CMLANDING" 1)                 ; 착륙 사용
-  (setvar "CMLANDINGGAP" (* (atof *dim_text_height*) 0.5))
-  
-  ;; 축척
-  (setvar "CMSCALE" (atof *dim_scale*))
-  
-  ;; MLEADER 스타일 저장 (command 사용)
-  (if (tblsearch "MLEADERSTYLE" style-name)
+  ;; MLEADER 스타일이 존재하는지 확인
+  (if (not (tblsearch "MLEADERSTYLE" style-name))
     (progn
-      (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (덮어쓰기)"))
-      (command "._-MLEADERSTYLE" "_S" style-name "_Y")
-    )
-    (progn
+      ;; 스타일이 없으면 복사로 생성 (Standard 기반)
+      (command "._-MLEADERSTYLE" "_N" style-name "_C" "Standard" "")
       (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성됨"))
-      (command "._-MLEADERSTYLE" "_S" style-name)
     )
+    (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함 (수정)"))
   )
   
-  ;; 현재 MLEADER 스타일로 설정
+  ;; 생성된 스타일을 현재 스타일로 설정
   (command "._-MLEADERSTYLE" "_R" style-name)
   
-  ;; 명령 에코 복원
+  ;; 명령 에코 및 OSMODE 복원
   (setvar "CMDECHO" old_cmdecho)
+  (setvar "OSMODE" old_osmode)
   
-  (princ "\n=== MLEADER 스타일 설정 완료 ===")
-  (princ (strcat "\n  문자 높이: " *dim_text_height*))
-  (princ (strcat "\n  화살표 크기: " *dim_arrow_size*))
-  (princ (strcat "\n  축척: " *dim_scale*))
+  (princ "\n=== MLEADER 스타일 생성 완료 ===")
+  (princ (strcat "\n  스타일 이름: " style-name))
+  (princ (strcat "\n  (치수 스타일 " style-name "과 연동)"))
   (princ)
 )
 
