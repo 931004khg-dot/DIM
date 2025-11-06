@@ -70,7 +70,7 @@
     "        }\n"
     "        : row {\n"
     "            : text { label = \"치수선 거리 (비율):\"; width = 25; fixed_width = true; }\n"
-    "            : edit_box { key = \"dim_distance\"; edit_width = 10; value = \"20\"; }\n"
+    "            : text { key = \"dim_distance\"; width = 10; fixed_width = true; }\n"
     "        }\n"
     "        : row {\n"
     "            : text { label = \"문자 높이 (기본):\"; width = 25; fixed_width = true; }\n"
@@ -151,7 +151,8 @@
     "    spacer;\n"
     "    : row {\n"
     "        : spacer { width = 1; }\n"
-    "        : button { key = \"accept\"; label = \"확인\"; is_default = true; fixed_width = true; width = 12; }\n"
+    "        : button { key = \"save\"; label = \"저장\"; is_default = true; fixed_width = true; width = 15; }\n"
+    "        : button { key = \"save_as\"; label = \"다른이름으로 저장\"; fixed_width = true; width = 20; }\n"
     "        : button { key = \"cancel\"; label = \"취소\"; is_cancel = true; fixed_width = true; width = 12; }\n"
     "        : spacer { width = 1; }\n"
     "    }\n"
@@ -227,7 +228,7 @@
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
-  (set_tile "dim_distance" *dim_distance*)
+  (set_tile "dim_distance" *dim_distance*)  ; 읽기 전용 표시
   
   ;; 치수 타입 라디오 버튼 초기화
   (set_tile "dim_aligned" "1")
@@ -259,7 +260,7 @@
   (action_tile "dim_linear" "(setq *dim_type* \"0\")")
   (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
   (action_tile "dimscale" "(setq *dim_scale* $value)")
-  (action_tile "dim_distance" "(setq *dim_distance* $value)")
+  ;; dim_distance는 고급 설정에서만 수정 가능
   (action_tile "create_leader" "(setq result 3) (done_dialog 3)")
   (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
   (action_tile "reset"
@@ -314,7 +315,7 @@
       (setq final_arrow_size (* (atof *dim_arrow_size*) (atof *dim_scale*)))
       (setq final_text_gap (* (atof *dim_text_gap*) (atof *dim_scale*)))
       
-      ;; MLEADER 스타일 생성
+      ;; MLEADER 스타일 생성 (대화상자 표시)
       (create_mleader_style "ISO-25-Custom" 
                             final_text_height
                             final_arrow_size
@@ -360,7 +361,7 @@
         (set_tile "adv_distance" *dim_distance*)
         
         ;; 고급 설정 액션
-        (action_tile "accept"
+        (action_tile "save"
           "(progn
              (setq *dim_distance* (get_tile \"adv_distance\"))
              (setq *custom_text_height* (get_tile \"adv_textheight\"))
@@ -368,6 +369,19 @@
              (setq *custom_ext_offset* (get_tile \"adv_extoffset\"))
              (setq *custom_ext_extend* (get_tile \"adv_extextend\"))
              (setq *custom_text_gap* (get_tile \"adv_textgap\"))
+             (setq *save_as_mode* nil)
+             (done_dialog 3)
+           )"
+        )
+        (action_tile "save_as"
+          "(progn
+             (setq *dim_distance* (get_tile \"adv_distance\"))
+             (setq *custom_text_height* (get_tile \"adv_textheight\"))
+             (setq *custom_arrow_size* (get_tile \"adv_arrowsize\"))
+             (setq *custom_ext_offset* (get_tile \"adv_extoffset\"))
+             (setq *custom_ext_extend* (get_tile \"adv_extextend\"))
+             (setq *custom_text_gap* (get_tile \"adv_textgap\"))
+             (setq *save_as_mode* T)
              (done_dialog 3)
            )"
         )
@@ -377,6 +391,24 @@
         
         (if (= adv_result 3)
           (progn
+            ;; "다른이름으로 저장" 모드인 경우 스타일명 입력받기
+            (if *save_as_mode*
+              (progn
+                (setq new_style_name (getstring T "\n새 스타일 이름 입력 (예: ISO-25-Custom_2): "))
+                (if (and new_style_name (> (strlen new_style_name) 0))
+                  (progn
+                    (princ (strcat "\n새 스타일 '" new_style_name "' 생성됨"))
+                    (setq *new_dimstyle_name* new_style_name)
+                  )
+                  (progn
+                    (princ "\n유효한 이름이 입력되지 않았습니다. ISO-25-Custom 사용")
+                    (setq *new_dimstyle_name* nil)
+                  )
+                )
+              )
+              (setq *new_dimstyle_name* nil)
+            )
+            
             (if (not (new_dialog "dimstyle" dcl_id))
               (progn
                 (alert "DCL 대화상자를 다시 열 수 없습니다!")
@@ -479,8 +511,8 @@
         (setq *dim_text_gap* (rtos base_text_gap 2 3))
       )
       
-      ;; 치수 스타일 생성
-      (setq dimstyle-name "ISO-25-Custom")
+      ;; 치수 스타일 생성 (다른이름으로 저장한 경우 새 이름 사용)
+      (setq dimstyle-name (if *new_dimstyle_name* *new_dimstyle_name* "ISO-25-Custom"))
       (create_dimstyle dimstyle-name)
       
       ;; MLEADER 최종 크기 계산
@@ -488,7 +520,7 @@
       (setq final_arrow_size (* (atof *dim_arrow_size*) (atof *dim_scale*)))
       (setq final_text_gap (* (atof *dim_text_gap*) (atof *dim_scale*)))
       
-      ;; MLEADER 스타일 생성
+      ;; MLEADER 스타일 생성 (대화상자 표시)
       (create_mleader_style dimstyle-name 
                             final_text_height
                             final_arrow_size
@@ -584,63 +616,111 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (ActiveX 사용)
+;;;; MLEADER 스타일 생성 함수 (시스템 변수 직접 설정)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
                              old_cmdecho old_osmode acadApp doc mleader_styles 
-                             style_exists style-obj
+                             new_style error_obj
                             )
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
+  ;; 환경 변수 저장
   (setq old_cmdecho (getvar "CMDECHO"))
   (setq old_osmode (getvar "OSMODE"))
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  (setq acadApp (vlax-get-acad-object))
-  (setq doc (vla-get-activedocument acadApp))
-  (setq mleader_styles (vla-get-mleaderstyles doc))
-  (setq style_exists nil)
+  ;; ActiveX를 사용하여 MLEADER 스타일 생성 (오류 처리 포함)
+  (setq error_obj (vl-catch-all-apply 
+    '(lambda ()
+       (setq acadApp (vlax-get-acad-object))
+       (setq doc (vla-get-ActiveDocument acadApp))
+       (setq mleader_styles (vla-get-MLeaderStyles doc))
+       
+       ;; 기존 스타일이 있으면 삭제 후 다시 생성
+       (if (vl-catch-all-error-p (vl-catch-all-apply 'vla-Item (list mleader_styles style-name)))
+         (princ (strcat "\n  새 스타일 생성: " style-name))
+         (progn
+           (princ (strcat "\n  기존 스타일 삭제: " style-name))
+           (vla-Delete (vla-Item mleader_styles style-name))
+         )
+       )
+       
+       ;; 새 스타일 추가
+       (setq new_style (vla-Add mleader_styles style-name))
+       
+       ;; 콘텐츠 타입: MText (2)
+       (vla-put-ContentType new_style 2)
+       
+       ;; 문자 스타일: Standard
+       (vla-put-TextStyle new_style "Standard")
+       
+       ;; 문자 높이 (기본: 3 × DIMSCALE)
+       (vla-put-TextHeight new_style final-text-height)
+       
+       ;; 문자 색상: ByLayer (256)
+       (vla-put-TextColor new_style (vlax-make-variant 256 vlax-vbInteger))
+       
+       ;; 지시선 타입: Straight (1)
+       (vla-put-LeaderLineType new_style 1)
+       
+       ;; 화살표 기호: Closed filled (1)
+       (vla-put-ArrowSymbol new_style 1)
+       
+       ;; 화살표 크기 (기본: 2.5 × DIMSCALE)
+       (vla-put-ArrowSize new_style final-arrow-size)
+       
+       ;; 지시선 색상: ByLayer (256)
+       (vla-put-LeaderLineColor new_style (vlax-make-variant 256 vlax-vbInteger))
+       
+       ;; 착지 간격 (기본: 0.625 × DIMSCALE, DIMGAP과 동일)
+       (vla-put-LandingGap new_style final-text-gap)
+       
+       ;; 수직 부착: 0 (위쪽 부착)
+       (vla-put-TextAttachmentDirection new_style 0)
+       
+       ;; 연결선 길이 (Dogleg): 0.36 × DIMSCALE (스크린샷 참조)
+       (vla-put-DoglegLength new_style (* 0.36 (atof *dim_scale*)))
+       
+       ;; 최대 지시선 점 수: 2 (스크린샷 참조)
+       (vla-put-MaxLeaderSegmentsPoints new_style 2)
+       
+       ;; 지시선 선종류: ByLayer
+       (if (= (type (vla-get-LeaderLineType new_style)) 'INT)
+         (vla-put-LeaderLineType new_style 1)
+       )
+       
+       (princ "\n  ActiveX 속성 설정 완료")
+       T
+     )
+  ))
   
-  ;; 스타일 존재 확인
-  (vlax-for style mleader_styles
-    (if (= (strcase (vla-get-name style)) (strcase style-name))
-      (setq style_exists T)
-    )
-  )
-  
-  ;; 스타일이 없으면 생성
-  (if (not style_exists)
+  ;; 오류 확인
+  (if (vl-catch-all-error-p error_obj)
     (progn
-      (command "._-MLEADERSTYLE" "_C" "Standard" style-name)
-      (princ (strcat "\nMLEADER 스타일 '" style-name "' (Standard 기반) 생성됨"))
+      (princ "\n  오류 발생: ")
+      (princ (vl-catch-all-error-message error_obj))
+      (princ "\n  명령어 기반 방식으로 시도...")
+      
+      ;; 폴백: 명령어 기반 생성 시도
+      (command "._-MLEADERSTYLE" "_N" style-name "")
+      (princ "\n  기본 MLEADER 스타일 생성됨 (수동 조정 필요)")
     )
-    (princ (strcat "\nMLEADER 스타일 '" style-name "' 이미 존재함"))
+    (progn
+      ;; 현재 스타일로 설정
+      (setvar "CMLEADERSTYLE" style-name)
+      
+      (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
+      (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
+      (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
+      (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+    )
   )
   
-  ;; 스타일 객체 가져오기
-  (setq style-obj (vla-item mleader_styles style-name))
-  
-  ;; MLEADER 스타일 속성 설정
-  (vla-put-ContentType style-obj 2)  ; 2 = 다중 텍스트 (MText)
-  (vla-put-TextStyle style-obj "Standard")
-  (vla-put-TextHeight style-obj final-text-height)
-  (vla-put-ArrowSymbol style-obj 1)  ; 1 = 닫힌 채움
-  (vla-put-ArrowSize style-obj final-arrow-size)
-  (vla-put-LandingGap style-obj final-text-gap)
-  (vla-put-TextColor style-obj (vla-item (vla-get-AcadColors doc) 7))  ; 흰색
-  (vla-put-LeaderLineColor style-obj (vla-item (vla-get-AcadColors doc) 256))  ; ByLayer
-  
-  ;; 활성 스타일로 설정
-  (setvar "CMLEADERSTYLE" style-name)
-  
+  ;; 환경 변수 복원
   (setvar "CMDECHO" old_cmdecho)
   (setvar "OSMODE" old_osmode)
   
-  (princ "\n=== MLEADER 스타일 설정 완료 ===")
-  (princ (strcat "\n  스타일 이름: " style-name))
-  (princ (strcat "\n  문자 높이 (최종): " (rtos final-text-height 2 2)))
-  (princ (strcat "\n  화살표 크기 (최종): " (rtos final-arrow-size 2 2)))
   (princ)
 )
 
@@ -723,10 +803,7 @@
   (setvar "DIMTOLJ" 0)
   
   ;; 치수 스타일 저장
-  (if (tblsearch "DIMSTYLE" style-name)
-    (command "._-DIMSTYLE" "_S" style-name "_Y")
-    (command "._-DIMSTYLE" "_S" style-name)
-  )
+  (command "._-DIMSTYLE" "_S" style-name)
   
   (command "._-DIMSTYLE" "_R" style-name)
   
