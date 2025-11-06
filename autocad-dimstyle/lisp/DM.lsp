@@ -259,7 +259,40 @@
   ;; 액션 설정
   (action_tile "dim_linear" "(setq *dim_type* \"0\")")
   (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
-  (action_tile "dimscale" "(setq *dim_scale* $value)")
+  (action_tile "dimscale" 
+    "(progn
+       (setq *dim_scale* $value)
+       ;; DIMSCALE 변경 시 모든 크기 값 실시간 업데이트
+       (setq scale_ratio (atof *dim_scale*))
+       ;; 치수선 거리 (비례 적용)
+       (set_tile \"dim_distance\" *dim_distance*)
+       ;; 문자 높이 (기본 또는 커스텀 값 × DIMSCALE)
+       (if *custom_text_height*
+         (set_tile \"textheight\" (rtos (atof *custom_text_height*) 2 2))
+         (set_tile \"textheight\" (rtos base_text_height 2 2))
+       )
+       ;; 화살표 크기
+       (if *custom_arrow_size*
+         (set_tile \"arrowsize\" (rtos (atof *custom_arrow_size*) 2 2))
+         (set_tile \"arrowsize\" (rtos base_arrow_size 2 2))
+       )
+       ;; 간격띄우기
+       (if *custom_ext_offset*
+         (set_tile \"extoffset\" (rtos (atof *custom_ext_offset*) 2 2))
+         (set_tile \"extoffset\" (rtos base_ext_offset 2 2))
+       )
+       ;; 보조선 연장
+       (if *custom_ext_extend*
+         (set_tile \"extextend\" (rtos (atof *custom_ext_extend*) 2 2))
+         (set_tile \"extextend\" (rtos base_ext_extend 2 2))
+       )
+       ;; 문자 간격
+       (if *custom_text_gap*
+         (set_tile \"textgap\" (rtos (atof *custom_text_gap*) 2 3))
+         (set_tile \"textgap\" (rtos base_text_gap 2 3))
+       )
+     )"
+  )
   ;; dim_distance는 고급 설정에서만 수정 가능
   (action_tile "create_leader" "(setq result 3) (done_dialog 3)")
   (action_tile "edit_advanced" "(setq result 2) (done_dialog 2)")
