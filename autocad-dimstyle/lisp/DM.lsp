@@ -649,115 +649,62 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (ActiveX 기반)
+;;;; MLEADER 스타일 생성 함수 (명령어 기반 - 완전 자동)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode acad_obj doc mleader_dict
-                             style_obj standard_obj dogleg_length result
+                             old_cmdecho old_osmode dogleg_length old_attmode
                             )
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
   ;; 환경 변수 저장
   (setq old_cmdecho (getvar "CMDECHO"))
   (setq old_osmode (getvar "OSMODE"))
+  (setq old_attmode (getvar "ATTMODE"))
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
+  (setvar "ATTMODE" 0)
   
-  ;; vl-catch-all-apply로 안전하게 스타일 생성 시도
-  (setq result
-    (vl-catch-all-apply
-      '(lambda ()
-         ;; ActiveX 객체 가져오기
-         (setq acad_obj (vlax-get-acad-object))
-         (setq doc (vla-get-activedocument acad_obj))
-         (setq mleader_dict (vla-item 
-                              (vla-get-dictionaries doc) 
-                              "ACAD_MLEADERSTYLE"))
-         
-         ;; 기존 스타일이 있으면 삭제
-         (if (vl-catch-all-error-p 
-               (vl-catch-all-apply 'vla-item (list mleader_dict style-name)))
-           nil  ; 스타일이 없으면 무시
-           (progn
-             (princ (strcat "\n  기존 '" style-name "' 스타일 발견, 삭제 중..."))
-             (vla-delete (vla-item mleader_dict style-name))
-           )
-         )
-         
-         ;; Standard 스타일을 복사하여 새 스타일 생성
-         (setq standard_obj (vla-item mleader_dict "Standard"))
-         (setq style_obj (vla-copyfrom mleader_dict standard_obj style-name))
-         
-         ;; 스타일 속성 설정
-         (vla-put-TextHeight style_obj final-text-height)
-         (vla-put-ArrowSize style_obj final-arrow-size)
-         (vla-put-LandingGap style_obj final-text-gap)
-         
-         ;; 연결선 거리 계산 (스크린샷 기준: 0.36 × DIMSCALE)
-         (setq dogleg_length (* 0.36 (atof *dim_scale*)))
-         (vla-put-DoglegLength style_obj dogleg_length)
-         
-         ;; 기타 속성 설정 (스크린샷 참조)
-         (vla-put-ContentType style_obj 1)  ; MText
-         (vla-put-TextAttachmentDirection style_obj 0)  ; Horizontal
-         (vla-put-TextLeftAttachmentType style_obj 1)  ; Middle of top line
-         (vla-put-TextRightAttachmentType style_obj 1)  ; Middle of top line
-         (vla-put-MaxLeaderSegmentsPoints style_obj 2)  ; 최대 지시선 점 수
-         (vla-put-EnableLanding style_obj :vlax-true)  ; 착지선 사용
-         (vla-put-EnableDogleg style_obj :vlax-true)  ; 연결선 사용
-         
-         (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-         (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
-         (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
-         (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
-         (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
-         
-         ;; 현재 MLEADER 스타일로 설정
-         (setvar "CMLEADERSTYLE" style-name)
-         
-         T  ; 성공 반환
-       )
-    )
-  )
+  ;; 연결선 거리 계산 (스크린샷 기준: 0.36 × DIMSCALE)
+  (setq dogleg_length (* 0.36 (atof *dim_scale*)))
   
-  ;; 오류 처리
-  (if (vl-catch-all-error-p result)
-    (progn
-      (princ (strcat "\n  오류 발생: " (vl-catch-all-error-message result)))
-      (princ "\n  ActiveX 방식 실패 - 수동 설정 필요")
-      (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
-    )
-  )
+  ;; Standard 스타일 기반으로 새 스타일 생성 (명령어 방식)
+  ;; 기존 스타일이 있으면 자동으로 덮어쓰기됨
+  (command "._-MLEADERSTYLE" "_N" style-name "_Y")  ; 새로 만들기, 덮어쓰기 예
+  
+  ;; MLEADER 시스템 변수 설정
+  (setvar "MLEADERTYPE" 1)  ; Content type: MText
+  (setvar "MLEADERTEXTHEIGHT" final-text-height)
+  (setvar "MLEADERARROWSIZE" final-arrow-size)
+  (setvar "MLEADERLANDINGGAP" final-text-gap)
+  (setvar "MLEADERDOGLEGLEN" dogleg_length)
+  (setvar "MLEADERMAXSEGMENTS" 2)  ; 최대 지시선 점 수
+  (setvar "MLEADERLANDING" 1)  ; 착지선 사용
+  (setvar "MLEADERDOGLEG" 1)  ; 연결선 사용
+  (setvar "MLEADERTEXTATTACHDIR" 0)  ; 문자 결합 방향: 수평
+  (setvar "MLEADERTEXTATTACHLEFT" 1)  ; 왼쪽 결합: 위쪽 줄 중간
+  (setvar "MLEADERTEXTATTACHRIGHT" 1)  ; 오른쪽 결합: 위쪽 줄 중간
+  (setvar "MLEADERARROWHEAD" ".")  ; 화살표: 닫힌 채움
+  (setvar "MLEADERCOLOR" 256)  ; 색상: BYLAYER
+  (setvar "MLEADERTEXTCOLOR" 256)  ; 문자 색상: BYLAYER
+  
+  ;; 현재 설정을 스타일에 저장
+  (command "._-MLEADERSTYLE" "_S" style-name "_Y")  ; 저장, 덮어쓰기 예
+  
+  ;; 생성된 스타일을 현재 스타일로 설정
+  (command "._-MLEADERSTYLE" "_Set" style-name)
+  (setvar "CMLEADERSTYLE" style-name)
+  
+  (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
+  (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
+  (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
+  (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+  (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
   
   ;; 환경 변수 복원
   (setvar "CMDECHO" old_cmdecho)
   (setvar "OSMODE" old_osmode)
+  (setvar "ATTMODE" old_attmode)
   
-  (princ)
-)
-
-;; 수동 설정 안내 출력 함수
-(defun print_manual_instructions (style-name final-text-height final-arrow-size final-text-gap)
-  (princ "\n  ========================================")
-  (princ "\n  자동 생성 실패 - 수동 설정 가이드:")
-  (princ "\n  ========================================")
-  (princ (strcat "\n  1. MLEADERSTYLE 명령어 입력"))
-  (princ (strcat "\n  2. '새로 만들기' 클릭"))
-  (princ (strcat "\n  3. 이름: " style-name))
-  (princ (strcat "\n  4. '수정' 클릭 후 다음 값 설정:"))
-  (princ "\n  ")
-  (princ (strcat "\n  [지시선 형식 탭]"))
-  (princ (strcat "\n    - 자동 연결선 포함: 체크"))
-  (princ (strcat "\n    - 연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
-  (princ (strcat "\n    - 최대 지시선 점 수: 2"))
-  (princ "\n  ")
-  (princ (strcat "\n  [지시선 구조 탭]"))
-  (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
-  (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
-  (princ "\n  ")
-  (princ (strcat "\n  [내용 탭]"))
-  (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
-  (princ "\n  ========================================")
   (princ)
 )
 
