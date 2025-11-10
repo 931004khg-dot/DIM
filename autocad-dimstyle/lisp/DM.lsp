@@ -649,61 +649,88 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (명령어 기반 - 완전 자동)
+;;;; MLEADER 스타일 생성 함수 (ActiveX vla-Add 방식)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode dogleg_length old_attmode
+                             old_cmdecho old_osmode dogleg_length acad_obj doc 
+                             mleader_styles new_style result
                             )
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
   ;; 환경 변수 저장
   (setq old_cmdecho (getvar "CMDECHO"))
   (setq old_osmode (getvar "OSMODE"))
-  (setq old_attmode (getvar "ATTMODE"))
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
-  (setvar "ATTMODE" 0)
   
   ;; 연결선 거리 계산 (스크린샷 기준: 0.36 × DIMSCALE)
   (setq dogleg_length (* 0.36 (atof *dim_scale*)))
   
-  ;; Standard 스타일 기반으로 새 스타일 생성 (명령어 방식)
-  ;; 기존 스타일이 있으면 자동으로 덮어쓰기됨
-  (command "._-MLEADERSTYLE" "_N" style-name "_Y")  ; 새로 만들기, 덮어쓰기 예
+  ;; vl-catch-all-apply로 안전하게 스타일 생성 시도
+  (setq result
+    (vl-catch-all-apply
+      '(lambda ()
+         ;; ActiveX 객체 가져오기
+         (setq acad_obj (vlax-get-acad-object))
+         (setq doc (vla-get-activedocument acad_obj))
+         (setq mleader_styles (vla-get-MLeaderStyles doc))
+         
+         ;; 기존 스타일이 있으면 삭제
+         (if (not (vl-catch-all-error-p 
+                    (vl-catch-all-apply 'vla-item (list mleader_styles style-name))))
+           (progn
+             (princ (strcat "\n  기존 '" style-name "' 스타일 발견, 삭제 중..."))
+             (vla-delete (vla-item mleader_styles style-name))
+           )
+         )
+         
+         ;; 새 MLEADER 스타일 생성 (vla-Add 사용)
+         (setq new_style (vla-Add mleader_styles style-name))
+         
+         ;; 스타일 속성 설정
+         (vla-put-ContentType new_style 1)  ; MText
+         (vla-put-TextHeight new_style final-text-height)
+         (vla-put-ArrowSize new_style final-arrow-size)
+         (vla-put-LandingGap new_style final-text-gap)
+         (vla-put-DoglegLength new_style dogleg_length)
+         (vla-put-MaxLeaderSegmentsPoints new_style 2)  ; 최대 지시선 점 수
+         (vla-put-EnableLanding new_style :vlax-true)  ; 착지선 사용
+         (vla-put-EnableDogleg new_style :vlax-true)  ; 연결선 사용
+         (vla-put-TextAttachmentDirection new_style 0)  ; 수평
+         (vla-put-TextLeftAttachmentType new_style 1)  ; 위쪽 줄 중간
+         (vla-put-TextRightAttachmentType new_style 1)  ; 위쪽 줄 중간
+         
+         (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
+         (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
+         (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
+         (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+         (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
+         
+         ;; 현재 MLEADER 스타일로 설정
+         (setvar "CMLEADERSTYLE" style-name)
+         
+         T  ; 성공 반환
+       )
+    )
+  )
   
-  ;; MLEADER 시스템 변수 설정
-  (setvar "MLEADERTYPE" 1)  ; Content type: MText
-  (setvar "MLEADERTEXTHEIGHT" final-text-height)
-  (setvar "MLEADERARROWSIZE" final-arrow-size)
-  (setvar "MLEADERLANDINGGAP" final-text-gap)
-  (setvar "MLEADERDOGLEGLEN" dogleg_length)
-  (setvar "MLEADERMAXSEGMENTS" 2)  ; 최대 지시선 점 수
-  (setvar "MLEADERLANDING" 1)  ; 착지선 사용
-  (setvar "MLEADERDOGLEG" 1)  ; 연결선 사용
-  (setvar "MLEADERTEXTATTACHDIR" 0)  ; 문자 결합 방향: 수평
-  (setvar "MLEADERTEXTATTACHLEFT" 1)  ; 왼쪽 결합: 위쪽 줄 중간
-  (setvar "MLEADERTEXTATTACHRIGHT" 1)  ; 오른쪽 결합: 위쪽 줄 중간
-  (setvar "MLEADERARROWHEAD" ".")  ; 화살표: 닫힌 채움
-  (setvar "MLEADERCOLOR" 256)  ; 색상: BYLAYER
-  (setvar "MLEADERTEXTCOLOR" 256)  ; 문자 색상: BYLAYER
-  
-  ;; 현재 설정을 스타일에 저장
-  (command "._-MLEADERSTYLE" "_S" style-name "_Y")  ; 저장, 덮어쓰기 예
-  
-  ;; 생성된 스타일을 현재 스타일로 설정
-  (command "._-MLEADERSTYLE" "_Set" style-name)
-  (setvar "CMLEADERSTYLE" style-name)
-  
-  (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-  (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
-  (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
-  (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
-  (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
+  ;; 오류 처리
+  (if (vl-catch-all-error-p result)
+    (progn
+      (princ (strcat "\n  오류 발생: " (vl-catch-all-error-message result)))
+      (princ (strcat "\n  자동 생성 실패 - AutoCAD 버전 또는 권한 문제일 수 있습니다."))
+      (princ (strcat "\n  MLEADERSTYLE 명령으로 수동 생성 권장: "))
+      (princ (strcat "\n    - 이름: " style-name))
+      (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
+      (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
+      (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
+      (princ (strcat "\n    - 연결선 거리: " (rtos dogleg_length 2 2)))
+    )
+  )
   
   ;; 환경 변수 복원
   (setvar "CMDECHO" old_cmdecho)
   (setvar "OSMODE" old_osmode)
-  (setvar "ATTMODE" old_attmode)
   
   (princ)
 )
