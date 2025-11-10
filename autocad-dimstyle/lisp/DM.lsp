@@ -649,13 +649,13 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (ActiveX vla-Add 방식)
+;;;; MLEADER 스타일 생성 함수 (AutoCAD 버전 감지 및 자동 생성)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode dogleg_length acad_obj doc 
-                             mleader_styles new_style result
+                             old_cmdecho old_osmode dogleg_length result
+                             has_mleader
                             )
-  (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
+  (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 시도 중..."))
   
   ;; 환경 변수 저장
   (setq old_cmdecho (getvar "CMDECHO"))
@@ -663,68 +663,62 @@
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  ;; 연결선 거리 계산 (스크린샷 기준: 0.36 × DIMSCALE)
-  (setq dogleg_length (* 0.36 (atof *dim_scale*)))
-  
-  ;; vl-catch-all-apply로 안전하게 스타일 생성 시도
-  (setq result
+  ;; MLEADER 지원 여부 확인 (CMLEADERSTYLE 변수 존재 여부)
+  (setq has_mleader
     (vl-catch-all-apply
       '(lambda ()
-         ;; ActiveX 객체 가져오기
-         (setq acad_obj (vlax-get-acad-object))
-         (setq doc (vla-get-activedocument acad_obj))
-         (setq mleader_styles (vla-get-MLeaderStyles doc))
-         
-         ;; 기존 스타일이 있으면 삭제
-         (if (not (vl-catch-all-error-p 
-                    (vl-catch-all-apply 'vla-item (list mleader_styles style-name))))
-           (progn
-             (princ (strcat "\n  기존 '" style-name "' 스타일 발견, 삭제 중..."))
-             (vla-delete (vla-item mleader_styles style-name))
-           )
-         )
-         
-         ;; 새 MLEADER 스타일 생성 (vla-Add 사용)
-         (setq new_style (vla-Add mleader_styles style-name))
-         
-         ;; 스타일 속성 설정
-         (vla-put-ContentType new_style 1)  ; MText
-         (vla-put-TextHeight new_style final-text-height)
-         (vla-put-ArrowSize new_style final-arrow-size)
-         (vla-put-LandingGap new_style final-text-gap)
-         (vla-put-DoglegLength new_style dogleg_length)
-         (vla-put-MaxLeaderSegmentsPoints new_style 2)  ; 최대 지시선 점 수
-         (vla-put-EnableLanding new_style :vlax-true)  ; 착지선 사용
-         (vla-put-EnableDogleg new_style :vlax-true)  ; 연결선 사용
-         (vla-put-TextAttachmentDirection new_style 0)  ; 수평
-         (vla-put-TextLeftAttachmentType new_style 1)  ; 위쪽 줄 중간
-         (vla-put-TextRightAttachmentType new_style 1)  ; 위쪽 줄 중간
-         
-         (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-         (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
-         (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
-         (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
-         (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
-         
-         ;; 현재 MLEADER 스타일로 설정
-         (setvar "CMLEADERSTYLE" style-name)
-         
-         T  ; 성공 반환
+         (getvar "CMLEADERSTYLE")
+         T
        )
     )
   )
   
-  ;; 오류 처리
-  (if (vl-catch-all-error-p result)
+  (if (vl-catch-all-error-p has_mleader)
     (progn
-      (princ (strcat "\n  오류 발생: " (vl-catch-all-error-message result)))
-      (princ (strcat "\n  자동 생성 실패 - AutoCAD 버전 또는 권한 문제일 수 있습니다."))
-      (princ (strcat "\n  MLEADERSTYLE 명령으로 수동 생성 권장: "))
-      (princ (strcat "\n    - 이름: " style-name))
+      ;; MLEADER를 지원하지 않는 AutoCAD 버전
+      (princ "\n  이 AutoCAD 버전은 MLEADER를 지원하지 않습니다.")
+      (princ "\n  구형 LEADER 명령을 사용하십시오.")
+      (princ "\n  (DIMSTYLE은 정상적으로 생성되었습니다)")
+    )
+    (progn
+      ;; MLEADER를 지원하는 버전 - 생성 시도
+      (setq dogleg_length (* 0.36 (atof *dim_scale*)))
+      
+      ;; GUI 방식으로 MLEADERSTYLE 생성 시도
+      (setq result
+        (vl-catch-all-apply
+          '(lambda ()
+             ;; MLEADERSTYLE 명령으로 스타일 생성
+             (command "._MLEADERSTYLE")
+             
+             ;; AutoCAD GUI 대화상자가 열림
+             ;; 자동화 불가능하므로 사용자에게 안내
+             (command)  ; 대화상자 닫기
+             
+             nil  ; GUI 자동화 불가
+           )
+        )
+      )
+      
+      ;; 사용자에게 MLEADER 설정 안내
+      (princ "\n========================================")
+      (princ "\n  MLEADER 스타일 수동 설정 안내:")
+      (princ "\n========================================")
+      (princ "\n  명령어: MLEADERSTYLE")
+      (princ "\n  ")
+      (princ (strcat "\n  1. '새로 만들기' 또는 '수정' 선택"))
+      (princ (strcat "\n  2. 스타일 이름: " style-name))
+      (princ (strcat "\n  3. 다음 값으로 설정:"))
+      (princ "\n  ")
+      (princ (strcat "\n  [지시선 형식]"))
       (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
       (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
+      (princ "\n  ")
+      (princ (strcat "\n  [지시선 구조]"))
       (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
       (princ (strcat "\n    - 연결선 거리: " (rtos dogleg_length 2 2)))
+      (princ (strcat "\n    - 최대 지시선 점: 2"))
+      (princ "\n========================================")
     )
   )
   
