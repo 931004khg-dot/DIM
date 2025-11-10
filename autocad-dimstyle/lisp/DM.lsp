@@ -740,11 +740,15 @@
     (progn
       (princ "\n  오류 발생: ")
       (princ (vl-catch-all-error-message error_obj))
-      (princ "\n  명령어 기반 방식으로 시도...")
-      
-      ;; 폴백: 명령어 기반 생성 시도
-      (command "._-MLEADERSTYLE" "_N" style-name "")
-      (princ "\n  기본 MLEADER 스타일 생성됨 (수동 조정 필요)")
+      (princ "\n  ActiveX 방식을 사용할 수 없음 - AutoCAD 버전이 MLEADER ActiveX를 지원하지 않습니다.")
+      (princ "\n  해결 방법: AutoCAD에서 수동으로 MLEADERSTYLE 생성 후 설정하세요.")
+      (princ (strcat "\n  필요한 설정 값:"))
+      (princ (strcat "\n    - 스타일 이름: " style-name))
+      (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
+      (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
+      (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
+      (princ (strcat "\n    - 연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
+      (princ "\n  지시선은 현재 Standard 스타일로 그려집니다.")
     )
     (progn
       ;; 현재 스타일로 설정
@@ -843,8 +847,8 @@
   (setvar "DIMTFAC" 1.0)
   (setvar "DIMTOLJ" 0)
   
-  ;; 치수 스타일 저장
-  (command "._-DIMSTYLE" "_S" style-name)
+  ;; 치수 스타일 저장 (재정의 자동 허용)
+  (command "._-DIMSTYLE" "_S" style-name "_Y")
   
   (command "._-DIMSTYLE" "_R" style-name)
   
