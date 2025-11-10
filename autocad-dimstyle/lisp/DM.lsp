@@ -649,13 +649,14 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (AutoCAD 버전 감지 및 자동 생성)
+;;;; MLEADER 스타일 생성 함수 (디버깅 버전)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode dogleg_length result
-                             has_mleader
+                             old_cmdecho old_osmode dogleg_length
+                             acad_obj doc mleader_styles standard_style new_style
+                             test_result methods_list
                             )
-  (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 시도 중..."))
+  (princ (strcat "\n\n=== MLEADER 스타일 '" style-name "' 생성 디버깅 시작 ==="))
   
   ;; 환경 변수 저장
   (setq old_cmdecho (getvar "CMDECHO"))
@@ -663,69 +664,204 @@
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  ;; MLEADER 지원 여부 확인 (CMLEADERSTYLE 변수 존재 여부)
-  (setq has_mleader
+  ;; 1. MLEADER 지원 여부 확인
+  (princ "\n[1] CMLEADERSTYLE 변수 확인...")
+  (setq test_result
     (vl-catch-all-apply
       '(lambda ()
-         (getvar "CMLEADERSTYLE")
+         (princ (strcat "\n    현재 CMLEADERSTYLE = " (getvar "CMLEADERSTYLE")))
          T
        )
     )
   )
-  
-  (if (vl-catch-all-error-p has_mleader)
+  (if (vl-catch-all-error-p test_result)
     (progn
-      ;; MLEADER를 지원하지 않는 AutoCAD 버전
-      (princ "\n  이 AutoCAD 버전은 MLEADER를 지원하지 않습니다.")
-      (princ "\n  구형 LEADER 명령을 사용하십시오.")
-      (princ "\n  (DIMSTYLE은 정상적으로 생성되었습니다)")
+      (princ "\n    [실패] MLEADER를 지원하지 않습니다.")
+      (setvar "CMDECHO" old_cmdecho)
+      (setvar "OSMODE" old_osmode)
+      (princ "\n=== 디버깅 종료 ===\n")
+      (princ)
+      (exit)
     )
+    (princ "\n    [성공] MLEADER 지원됨")
+  )
+  
+  ;; 2. ActiveX 객체 가져오기
+  (princ "\n[2] ActiveX 객체 가져오기...")
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (setq acad_obj (vlax-get-acad-object))
+         (princ "\n    [성공] acad_obj 획득")
+         (setq doc (vla-get-activedocument acad_obj))
+         (princ "\n    [성공] doc 획득")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
     (progn
-      ;; MLEADER를 지원하는 버전 - 생성 시도
-      (setq dogleg_length (* 0.36 (atof *dim_scale*)))
+      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+      (setvar "CMDECHO" old_cmdecho)
+      (setvar "OSMODE" old_osmode)
+      (princ "\n=== 디버깅 종료 ===\n")
+      (princ)
+      (exit)
+    )
+  )
+  
+  ;; 3. MLeaderStyles 컬렉션 접근 시도
+  (princ "\n[3] MLeaderStyles 컬렉션 접근 시도...")
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (setq mleader_styles (vla-get-MLeaderStyles doc))
+         (princ "\n    [성공] MLeaderStyles 컬렉션 획득")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (progn
+      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+      (princ "\n    vla-get-MLeaderStyles 메서드가 없습니다.")
       
-      ;; GUI 방식으로 MLEADERSTYLE 생성 시도
-      (setq result
+      ;; 사용 가능한 메서드 나열 시도
+      (princ "\n[4] Document 객체의 사용 가능한 메서드 확인...")
+      (setq test_result
         (vl-catch-all-apply
           '(lambda ()
-             ;; MLEADERSTYLE 명령으로 스타일 생성
-             (command "._MLEADERSTYLE")
-             
-             ;; AutoCAD GUI 대화상자가 열림
-             ;; 자동화 불가능하므로 사용자에게 안내
-             (command)  ; 대화상자 닫기
-             
-             nil  ; GUI 자동화 불가
+             (vlax-dump-object doc T)
+             T
            )
         )
       )
       
-      ;; 사용자에게 MLEADER 설정 안내
-      (princ "\n========================================")
-      (princ "\n  MLEADER 스타일 수동 설정 안내:")
-      (princ "\n========================================")
-      (princ "\n  명령어: MLEADERSTYLE")
-      (princ "\n  ")
-      (princ (strcat "\n  1. '새로 만들기' 또는 '수정' 선택"))
-      (princ (strcat "\n  2. 스타일 이름: " style-name))
-      (princ (strcat "\n  3. 다음 값으로 설정:"))
-      (princ "\n  ")
-      (princ (strcat "\n  [지시선 형식]"))
-      (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
-      (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
-      (princ "\n  ")
-      (princ (strcat "\n  [지시선 구조]"))
-      (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
-      (princ (strcat "\n    - 연결선 거리: " (rtos dogleg_length 2 2)))
-      (princ (strcat "\n    - 최대 지시선 점: 2"))
-      (princ "\n========================================")
+      (setvar "CMDECHO" old_cmdecho)
+      (setvar "OSMODE" old_osmode)
+      (princ "\n=== 디버깅 종료 ===\n")
+      (princ)
+      (exit)
     )
+  )
+  
+  ;; 4. Standard 스타일 확인
+  (princ "\n[4] Standard 스타일 확인...")
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (setq standard_style (vla-item mleader_styles "Standard"))
+         (princ "\n    [성공] Standard 스타일 찾음")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+    (princ "\n    [성공] Standard 스타일 존재")
+  )
+  
+  ;; 5. 새 스타일 추가 시도
+  (princ "\n[5] 새 스타일 추가 시도...")
+  (setq dogleg_length (* 0.36 (atof *dim_scale*)))
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (setq new_style (vla-Add mleader_styles style-name))
+         (princ (strcat "\n    [성공] '" style-name "' 스타일 생성"))
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (progn
+      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+      (setvar "CMDECHO" old_cmdecho)
+      (setvar "OSMODE" old_osmode)
+      (princ "\n=== 디버깅 종료 ===\n")
+      (princ)
+      (exit)
+    )
+  )
+  
+  ;; 6. 속성 설정 시도
+  (princ "\n[6] 속성 설정 시도...")
+  (princ (strcat "\n    TextHeight = " (rtos final-text-height 2 2)))
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (vla-put-TextHeight new_style final-text-height)
+         (princ "\n    [성공] TextHeight 설정")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+  )
+  
+  (princ (strcat "\n    ArrowSize = " (rtos final-arrow-size 2 2)))
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (vla-put-ArrowSize new_style final-arrow-size)
+         (princ "\n    [성공] ArrowSize 설정")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+  )
+  
+  (princ (strcat "\n    LandingGap = " (rtos final-text-gap 2 2)))
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (vla-put-LandingGap new_style final-text-gap)
+         (princ "\n    [성공] LandingGap 설정")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+  )
+  
+  (princ (strcat "\n    DoglegLength = " (rtos dogleg_length 2 2)))
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (vla-put-DoglegLength new_style dogleg_length)
+         (princ "\n    [성공] DoglegLength 설정")
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+  )
+  
+  ;; 7. 현재 스타일로 설정 시도
+  (princ "\n[7] 현재 MLEADER 스타일로 설정 시도...")
+  (setq test_result
+    (vl-catch-all-apply
+      '(lambda ()
+         (setvar "CMLEADERSTYLE" style-name)
+         (princ (strcat "\n    [성공] CMLEADERSTYLE = " (getvar "CMLEADERSTYLE")))
+         T
+       )
+    )
+  )
+  (if (vl-catch-all-error-p test_result)
+    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
   )
   
   ;; 환경 변수 복원
   (setvar "CMDECHO" old_cmdecho)
   (setvar "OSMODE" old_osmode)
   
+  (princ "\n=== 디버깅 종료 ===\n")
   (princ)
 )
 
