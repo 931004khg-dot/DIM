@@ -649,11 +649,11 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (Dictionary 기반 + entmake)
+;;;; MLEADER 스타일 생성 함수 (ActiveX 기반)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode mleader_dict style_dict new_style
-                             standard_style style_data xdata_list
+                             old_cmdecho old_osmode acad_obj doc mleader_dict
+                             style_obj standard_obj dogleg_length result
                             )
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
@@ -663,71 +663,68 @@
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  ;; ACAD_MLEADERSTYLE dictionary 가져오기
-  (setq mleader_dict (dictsearch (namedobjdict) "ACAD_MLEADERSTYLE"))
-  
-  (if mleader_dict
-    (progn
-      ;; Standard 스타일의 정의 가져오기
-      (setq style_dict (namedobjdict))
-      (setq standard_style (dictsearch 
-                             (cdr (assoc -1 mleader_dict)) 
-                             "Standard"))
-      
-      (if standard_style
-        (progn
-          (princ "\n  Standard 스타일 찾음, 복사 시도...")
-          
-          ;; Standard 기반으로 새 스타일 데이터 생성
-          (setq style_data
-            (list
-              (cons 0 "MLEADERSTYLE")
-              (cons 100 "AcDbMLeaderStyle")
-              (cons 2 style-name)
-              (cons 3 "")
-              (cons 70 0)
-              (cons 71 1)  ; Content type: 1=MText
-              (cons 170 2)  ; Text attachment direction
-              (cons 171 1)  ; Text attachment type
-              (cons 172 0)  ; Text angle type
-              (cons 90 2)  ; Text color (ByLayer)
-              (cons 40 final-text-height)  ; Text height
-              (cons 41 final-arrow-size)  ; Arrow size
-              (cons 140 (* 0.36 (atof *dim_scale*)))  ; Dogleg length
-              (cons 145 final-text-gap)  ; Landing gap
-              (cons 174 1)  ; Arrow head symbol (Closed filled)
-              (cons 175 1)  ; Block connection type
-              (cons 176 0)  ; Enable landing
-              (cons 177 0)  ; Enable dogleg
-              (cons 178 1)  ; Max leader points
-              ; Text style will use default "Standard" (removed group code 340)
-            )
-          )
-          
-          ;; entmake로 새 MLEADERSTYLE 생성 시도
-          (if (setq new_style (entmake style_data))
-            (progn
-              (setvar "CMLEADERSTYLE" style-name)
-              (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-              (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
-              (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
-              (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
-              (princ (strcat "\n  연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
-            )
-            (progn
-              (princ "\n  entmake 실패 - 수동 설정 필요")
-              (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
-            )
-          )
-        )
-        (progn
-          (princ "\n  Standard 스타일을 찾을 수 없음")
-          (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
-        )
-      )
+  ;; vl-catch-all-apply로 안전하게 스타일 생성 시도
+  (setq result
+    (vl-catch-all-apply
+      '(lambda ()
+         ;; ActiveX 객체 가져오기
+         (setq acad_obj (vlax-get-acad-object))
+         (setq doc (vla-get-activedocument acad_obj))
+         (setq mleader_dict (vla-item 
+                              (vla-get-dictionaries doc) 
+                              "ACAD_MLEADERSTYLE"))
+         
+         ;; 기존 스타일이 있으면 삭제
+         (if (vl-catch-all-error-p 
+               (vl-catch-all-apply 'vla-item (list mleader_dict style-name)))
+           nil  ; 스타일이 없으면 무시
+           (progn
+             (princ (strcat "\n  기존 '" style-name "' 스타일 발견, 삭제 중..."))
+             (vla-delete (vla-item mleader_dict style-name))
+           )
+         )
+         
+         ;; Standard 스타일을 복사하여 새 스타일 생성
+         (setq standard_obj (vla-item mleader_dict "Standard"))
+         (setq style_obj (vla-copyfrom mleader_dict standard_obj style-name))
+         
+         ;; 스타일 속성 설정
+         (vla-put-TextHeight style_obj final-text-height)
+         (vla-put-ArrowSize style_obj final-arrow-size)
+         (vla-put-LandingGap style_obj final-text-gap)
+         
+         ;; 연결선 거리 계산 (스크린샷 기준: 0.36 × DIMSCALE)
+         (setq dogleg_length (* 0.36 (atof *dim_scale*)))
+         (vla-put-DoglegLength style_obj dogleg_length)
+         
+         ;; 기타 속성 설정 (스크린샷 참조)
+         (vla-put-ContentType style_obj 1)  ; MText
+         (vla-put-TextAttachmentDirection style_obj 0)  ; Horizontal
+         (vla-put-TextLeftAttachmentType style_obj 1)  ; Middle of top line
+         (vla-put-TextRightAttachmentType style_obj 1)  ; Middle of top line
+         (vla-put-MaxLeaderSegmentsPoints style_obj 2)  ; 최대 지시선 점 수
+         (vla-put-EnableLanding style_obj :vlax-true)  ; 착지선 사용
+         (vla-put-EnableDogleg style_obj :vlax-true)  ; 연결선 사용
+         
+         (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
+         (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
+         (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
+         (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+         (princ (strcat "\n  연결선 거리: " (rtos dogleg_length 2 2)))
+         
+         ;; 현재 MLEADER 스타일로 설정
+         (setvar "CMLEADERSTYLE" style-name)
+         
+         T  ; 성공 반환
+       )
     )
+  )
+  
+  ;; 오류 처리
+  (if (vl-catch-all-error-p result)
     (progn
-      (princ "\n  MLEADERSTYLE dictionary를 찾을 수 없음")
+      (princ (strcat "\n  오류 발생: " (vl-catch-all-error-message result)))
+      (princ "\n  ActiveX 방식 실패 - 수동 설정 필요")
       (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
     )
   )
