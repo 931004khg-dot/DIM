@@ -700,7 +700,7 @@
               (cons 176 0)  ; Enable landing
               (cons 177 0)  ; Enable dogleg
               (cons 178 1)  ; Max leader points
-              (cons 340 (cdr (assoc 7 standard_style)))  ; Text style object ID
+              ; Text style will use default "Standard" (removed group code 340)
             )
           )
           
