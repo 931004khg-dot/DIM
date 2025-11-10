@@ -710,13 +710,13 @@
     )
   )
   
-  ;; 3. MLeaderStyles 컬렉션 접근 시도
-  (princ "\n[3] MLeaderStyles 컬렉션 접근 시도...")
+  ;; 3. Dictionaries를 통해 MLEADERSTYLE dictionary 접근
+  (princ "\n[3] Dictionaries를 통해 MLEADERSTYLE 접근 시도...")
   (setq test_result
     (vl-catch-all-apply
       '(lambda ()
-         (setq mleader_styles (vla-get-MLeaderStyles doc))
-         (princ "\n    [성공] MLeaderStyles 컬렉션 획득")
+         (setq mleader_styles (vla-item (vla-get-Dictionaries doc) "ACAD_MLEADERSTYLE"))
+         (princ "\n    [성공] ACAD_MLEADERSTYLE Dictionary 획득")
          T
        )
     )
@@ -724,19 +724,6 @@
   (if (vl-catch-all-error-p test_result)
     (progn
       (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-      (princ "\n    vla-get-MLeaderStyles 메서드가 없습니다.")
-      
-      ;; 사용 가능한 메서드 나열 시도
-      (princ "\n[4] Document 객체의 사용 가능한 메서드 확인...")
-      (setq test_result
-        (vl-catch-all-apply
-          '(lambda ()
-             (vlax-dump-object doc T)
-             T
-           )
-        )
-      )
-      
       (setvar "CMDECHO" old_cmdecho)
       (setvar "OSMODE" old_osmode)
       (princ "\n=== 디버깅 종료 ===\n")
@@ -761,13 +748,14 @@
     (princ "\n    [성공] Standard 스타일 존재")
   )
   
-  ;; 5. 새 스타일 추가 시도
-  (princ "\n[5] 새 스타일 추가 시도...")
+  ;; 5. 새 스타일 추가 시도 (AddObject 사용)
+  (princ "\n[5] 새 스타일 추가 시도 (AddObject 사용)...")
   (setq dogleg_length (* 0.36 (atof *dim_scale*)))
   (setq test_result
     (vl-catch-all-apply
       '(lambda ()
-         (setq new_style (vla-Add mleader_styles style-name))
+         ;; Standard 스타일을 복사하여 새 이름으로 추가
+         (setq new_style (vla-AddObject mleader_styles style-name "AcDbMLeaderStyle"))
          (princ (strcat "\n    [성공] '" style-name "' 스타일 생성"))
          T
        )
@@ -776,11 +764,29 @@
   (if (vl-catch-all-error-p test_result)
     (progn
       (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-      (setvar "CMDECHO" old_cmdecho)
-      (setvar "OSMODE" old_osmode)
-      (princ "\n=== 디버깅 종료 ===\n")
-      (princ)
-      (exit)
+      (princ "\n    AddObject 방식 실패, CopyFrom 시도...")
+      
+      ;; CopyFrom 시도
+      (setq test_result
+        (vl-catch-all-apply
+          '(lambda ()
+             (setq new_style (vla-CopyFrom mleader_styles standard_style style-name))
+             (princ (strcat "\n    [성공] CopyFrom으로 '" style-name "' 스타일 생성"))
+             T
+           )
+        )
+      )
+      
+      (if (vl-catch-all-error-p test_result)
+        (progn
+          (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
+          (setvar "CMDECHO" old_cmdecho)
+          (setvar "OSMODE" old_osmode)
+          (princ "\n=== 디버깅 종료 ===\n")
+          (princ)
+          (exit)
+        )
+      )
     )
   )
   
