@@ -649,11 +649,11 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (시스템 변수 직접 설정)
+;;;; MLEADER 스타일 생성 함수 (Dictionary 기반 + entmake)
 ;;;; ============================================================================
 (defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode acadApp doc mleader_styles 
-                             new_style error_obj
+                             old_cmdecho old_osmode mleader_dict style_dict new_style
+                             standard_style style_data xdata_list
                             )
   (princ (strcat "\nMLEADER 스타일 '" style-name "' 생성 중..."))
   
@@ -663,102 +663,72 @@
   (setvar "CMDECHO" 0)
   (setvar "OSMODE" 0)
   
-  ;; ActiveX를 사용하여 MLEADER 스타일 생성 (오류 처리 포함)
-  (setq error_obj (vl-catch-all-apply 
-    '(lambda ()
-       (setq acadApp (vlax-get-acad-object))
-       (setq doc (vla-get-ActiveDocument acadApp))
-       (setq mleader_styles (vla-get-MLeaderStyles doc))
-       
-       ;; 기존 스타일이 있으면 삭제 후 다시 생성
-       (if (vl-catch-all-error-p (vl-catch-all-apply 'vla-Item (list mleader_styles style-name)))
-         (princ (strcat "\n  새 스타일 생성: " style-name))
-         (progn
-           (princ (strcat "\n  기존 스타일 삭제: " style-name))
-           (vla-Delete (vla-Item mleader_styles style-name))
-         )
-       )
-       
-       ;; 새 스타일 추가
-       (setq new_style (vla-Add mleader_styles style-name))
-       
-       ;; 콘텐츠 타입: MText (2)
-       (vla-put-ContentType new_style 2)
-       
-       ;; 문자 스타일: Standard
-       (vla-put-TextStyle new_style "Standard")
-       
-       ;; 문자 높이 (기본: 3 × DIMSCALE)
-       (vla-put-TextHeight new_style final-text-height)
-       
-       ;; 문자 색상: ByLayer (256)
-       (vla-put-TextColor new_style (vlax-make-variant 256 vlax-vbInteger))
-       
-       ;; 지시선 타입: Straight (1)
-       (vla-put-LeaderLineType new_style 1)
-       
-       ;; 화살표 기호: Closed filled (1)
-       (vla-put-ArrowSymbol new_style 1)
-       
-       ;; 화살표 크기 (기본: 2.5 × DIMSCALE)
-       (vla-put-ArrowSize new_style final-arrow-size)
-       
-       ;; 지시선 색상: ByLayer (256)
-       (vla-put-LeaderLineColor new_style (vlax-make-variant 256 vlax-vbInteger))
-       
-       ;; 착지 간격 (스크린샷 2: 0.5 × DIMSCALE)
-       (vla-put-LandingGap new_style final-text-gap)
-       
-       ;; 지시선 연결: 수평 부착 (스크린샷 2)
-       ;; TextAttachmentDirection: 0=수평, 1=수직
-       (vla-put-TextAttachmentDirection new_style 0)
-       
-       ;; 연결선 길이 (Dogleg): 0.36 × DIMSCALE (스크린샷 1: 연결선 거리 설정 = 0.36)
-       (vla-put-DoglegLength new_style (* 0.36 (atof *dim_scale*)))
-       
-       ;; 최대 지시선 점 수: 2 (스크린샷 1)
-       (vla-put-MaxLeaderSegmentsPoints new_style 2)
-       
-       ;; 자동 연결선 포함: 체크됨 (스크린샷 1)
-       (vla-put-EnableDogleg new_style :vlax-true)
-       
-       ;; 첫 번째/두 번째 세그먼트 각도 제약 없음 (스크린샷 1: 0, 0)
-       ;; 기본값 사용
-       
-       ;; 지시선 선종류: ByLayer
-       (if (= (type (vla-get-LeaderLineType new_style)) 'INT)
-         (vla-put-LeaderLineType new_style 1)
-       )
-       
-       (princ "\n  ActiveX 속성 설정 완료")
-       T
-     )
-  ))
+  ;; ACAD_MLEADERSTYLE dictionary 가져오기
+  (setq mleader_dict (dictsearch (namedobjdict) "ACAD_MLEADERSTYLE"))
   
-  ;; 오류 확인
-  (if (vl-catch-all-error-p error_obj)
+  (if mleader_dict
     (progn
-      (princ "\n  오류 발생: ")
-      (princ (vl-catch-all-error-message error_obj))
-      (princ "\n  ActiveX 방식을 사용할 수 없음 - AutoCAD 버전이 MLEADER ActiveX를 지원하지 않습니다.")
-      (princ "\n  해결 방법: AutoCAD에서 수동으로 MLEADERSTYLE 생성 후 설정하세요.")
-      (princ (strcat "\n  필요한 설정 값:"))
-      (princ (strcat "\n    - 스타일 이름: " style-name))
-      (princ (strcat "\n    - 문자 높이: " (rtos final-text-height 2 2)))
-      (princ (strcat "\n    - 화살표 크기: " (rtos final-arrow-size 2 2)))
-      (princ (strcat "\n    - 착지 간격: " (rtos final-text-gap 2 2)))
-      (princ (strcat "\n    - 연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
-      (princ "\n  지시선은 현재 Standard 스타일로 그려집니다.")
+      ;; Standard 스타일의 정의 가져오기
+      (setq style_dict (namedobjdict))
+      (setq standard_style (dictsearch 
+                             (cdr (assoc -1 mleader_dict)) 
+                             "Standard"))
+      
+      (if standard_style
+        (progn
+          (princ "\n  Standard 스타일 찾음, 복사 시도...")
+          
+          ;; Standard 기반으로 새 스타일 데이터 생성
+          (setq style_data
+            (list
+              (cons 0 "MLEADERSTYLE")
+              (cons 100 "AcDbMLeaderStyle")
+              (cons 2 style-name)
+              (cons 3 "")
+              (cons 70 0)
+              (cons 71 1)  ; Content type: 1=MText
+              (cons 170 2)  ; Text attachment direction
+              (cons 171 1)  ; Text attachment type
+              (cons 172 0)  ; Text angle type
+              (cons 90 2)  ; Text color (ByLayer)
+              (cons 40 final-text-height)  ; Text height
+              (cons 41 final-arrow-size)  ; Arrow size
+              (cons 140 (* 0.36 (atof *dim_scale*)))  ; Dogleg length
+              (cons 145 final-text-gap)  ; Landing gap
+              (cons 174 1)  ; Arrow head symbol (Closed filled)
+              (cons 175 1)  ; Block connection type
+              (cons 176 0)  ; Enable landing
+              (cons 177 0)  ; Enable dogleg
+              (cons 178 1)  ; Max leader points
+              (cons 340 (cdr (assoc 7 standard_style)))  ; Text style object ID
+            )
+          )
+          
+          ;; entmake로 새 MLEADERSTYLE 생성 시도
+          (if (setq new_style (entmake style_data))
+            (progn
+              (setvar "CMLEADERSTYLE" style-name)
+              (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
+              (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2)))
+              (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2)))
+              (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2)))
+              (princ (strcat "\n  연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
+            )
+            (progn
+              (princ "\n  entmake 실패 - 수동 설정 필요")
+              (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
+            )
+          )
+        )
+        (progn
+          (princ "\n  Standard 스타일을 찾을 수 없음")
+          (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
+        )
+      )
     )
     (progn
-      ;; 현재 스타일로 설정
-      (setvar "CMLEADERSTYLE" style-name)
-      
-      (princ (strcat "\n  MLEADER 스타일 '" style-name "' 자동 생성 완료!"))
-      (princ (strcat "\n  문자 높이: " (rtos final-text-height 2 2) " (기본: 3)"))
-      (princ (strcat "\n  화살표 크기: " (rtos final-arrow-size 2 2) " (기본: 2.5)"))
-      (princ (strcat "\n  착지 간격: " (rtos final-text-gap 2 2) " (기본: 0.5)"))
-      (princ (strcat "\n  연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2) " (기본: 0.36)"))
+      (princ "\n  MLEADERSTYLE dictionary를 찾을 수 없음")
+      (print_manual_instructions style-name final-text-height final-arrow-size final-text-gap)
     )
   )
   
@@ -766,6 +736,31 @@
   (setvar "CMDECHO" old_cmdecho)
   (setvar "OSMODE" old_osmode)
   
+  (princ)
+)
+
+;; 수동 설정 안내 출력 함수
+(defun print_manual_instructions (style-name final-text-height final-arrow-size final-text-gap)
+  (princ "\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  (princ "\n  자동 생성 실패 - 수동 설정 가이드:")
+  (princ "\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+  (princ (strcat "\n  1. MLEADERSTYLE 명령어 입력"))
+  (princ (strcat "\n  2. '새로 만들기' 클릭"))
+  (princ (strcat "\n  3. 이름: " style-name))
+  (princ (strcat "\n  4. '수정' 클릭 후 다음 값 설정:"))
+  (princ "\n  ")
+  (princ (strcat "\n  [지시선 형식 탭]"))
+  (princ (strcat "\n    • 자동 연결선 포함: 체크"))
+  (princ (strcat "\n    • 연결선 거리: " (rtos (* 0.36 (atof *dim_scale*)) 2 2)))
+  (princ (strcat "\n    • 최대 지시선 점 수: 2"))
+  (princ "\n  ")
+  (princ (strcat "\n  [지시선 구조 탭]"))
+  (princ (strcat "\n    • 문자 높이: " (rtos final-text-height 2 2)))
+  (princ (strcat "\n    • 착지 간격: " (rtos final-text-gap 2 2)))
+  (princ "\n  ")
+  (princ (strcat "\n  [내용 탭]"))
+  (princ (strcat "\n    • 화살표 크기: " (rtos final-arrow-size 2 2)))
+  (princ "\n  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
   (princ)
 )
 
