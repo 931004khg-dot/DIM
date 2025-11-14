@@ -57,6 +57,11 @@
   (setq dcl_content (strcat
     "dimstyle : dialog {\n"
     "    label = \"치수 스타일 설정 (DM)\";\n"
+    "    : boxed_radio_column {\n"
+    "        label = \"도면 타입\";\n"
+    "        : radio_button { key = \"detail_1\"; label = \"상세도(1)\"; }\n"
+    "        : radio_button { key = \"plan_1000\"; label = \"평면도(1000)\"; }\n"
+    "    }\n"
     "    : boxed_column {\n"
     "        label = \"기본 설정 (ISO-25 표준)\";\n"
     "        : boxed_radio_column {\n"
@@ -180,10 +185,10 @@
 (defun C:DM (/ dcl_id result dimstyle-name dcl_path
                  base_text_height base_arrow_size base_ext_offset 
                  base_ext_extend base_text_gap
-                 final_text_height final_arrow_size final_text_gap
                  scale_ratio adv_result continue_loop pt1 pt2 pt3 
                  dx dy dist unit_x unit_y perp_x perp_y mid_x mid_y
                  to_pt3_x to_pt3_y dot_product dim_pt
+                 leader_result ; (draw_custom_leader)의 결과를 받기 위한 변수 추가
                 )
   (princ "\n치수 스타일 생성 프로그램 시작... (DM)")
   
@@ -224,11 +229,20 @@
   (setq base_arrow_size 2.5)
   (setq base_ext_offset 10.0)
   (setq base_ext_extend 1.25)
-  (setq base_text_gap 0.5)  ; MLEADER 착지 간격 (스크린샷 2: 0.5)
+  (setq base_text_gap 0.625)  ; 문자 간격 (DIMGAP = 0.625)
   
   ;; DCL 컨트롤 초기화
   (set_tile "dimscale" *dim_scale*)
   (set_tile "dim_distance" *dim_distance*)  ; 읽기 전용 표시
+  
+  ;; 도면 타입 라디오 버튼 초기화 (기본: 상세도)
+  (if (not *drawing_type*)
+    (setq *drawing_type* "detail")  ; 기본값: 상세도(1)
+  )
+  (if (= *drawing_type* "detail")
+    (set_tile "detail_1" "1")
+    (set_tile "plan_1000" "1")
+  )
   
   ;; 치수 타입 라디오 버튼 초기화
   (set_tile "dim_aligned" "1")
@@ -257,6 +271,8 @@
   )
   
   ;; 액션 설정
+  (action_tile "detail_1" "(setq *drawing_type* \"detail\")")
+  (action_tile "plan_1000" "(setq *drawing_type* \"plan\")")
   (action_tile "dim_linear" "(setq *dim_type* \"0\")")
   (action_tile "dim_aligned" "(setq *dim_type* \"1\")")
   (action_tile "dimscale" 
@@ -329,6 +345,11 @@
       (setq *last_dim_scale* *dim_scale*)
       (setq *last_dim_distance* *dim_distance*)
       
+      ;; 레이어 생성
+      (ensure_layer "!-치수" 1)
+      (setvar "CLAYER" "!-치수")
+      (princ "\n현재 레이어: !-치수")
+      
       ;; 기본값 설정
       (if *custom_text_height*
         (setq *dim_text_height* *custom_text_height*)
@@ -338,26 +359,49 @@
         (setq *dim_arrow_size* *custom_arrow_size*)
         (setq *dim_arrow_size* (rtos base_arrow_size 2 2))
       )
+      (if *custom_ext_offset*
+        (setq *dim_ext_offset* *custom_ext_offset*)
+        (setq *dim_ext_offset* (rtos base_ext_offset 2 2))
+      )
+      (if *custom_ext_extend*
+        (setq *dim_ext_extend* *custom_ext_extend*)
+        (setq *dim_ext_extend* (rtos base_ext_extend 2 2))
+      )
       (if *custom_text_gap*
         (setq *dim_text_gap* *custom_text_gap*)
         (setq *dim_text_gap* (rtos base_text_gap 2 3))
       )
-
-      ;; MLEADER 최종 크기 계산 (기본 크기 * 전체 축척)
-      (setq final_text_height (* (atof *dim_text_height*) (atof *dim_scale*)))
-      (setq final_arrow_size (* (atof *dim_arrow_size*) (atof *dim_scale*)))
-      (setq final_text_gap (* (atof *dim_text_gap*) (atof *dim_scale*)))
       
-      ;; MLEADER 스타일 생성 (대화상자 표시)
-      (create_mleader_style "ISO-25-Custom" 
-                            final_text_height
-                            final_arrow_size
-                            final_text_gap
+      ;; 치수 스타일 생성 (도면 타입에 따라 이름 결정)
+      (if *new_dimstyle_name*
+        (setq dimstyle-name *new_dimstyle_name*)
+        (if (= *drawing_type* "detail")
+          (setq dimstyle-name "ISO-25-Custom")
+          (setq dimstyle-name "ISO-25-DWG")
+        )
       )
+      (create_dimstyle dimstyle-name)
       
-      ;; 지시선 그리기
-      (princ "\n지시선 그리기 모드...")
-      (command "._MLEADER")
+      ;; 연속 커스텀 지시선 그리기
+      (princ "\n지시선 그리기 시작... (ESC로 종료)")
+      (princ (strcat "\n현재 치수 스타일: " dimstyle-name))
+      (princ (strcat "\n전체 축척: " *dim_scale*))
+      (princ "\n지시선 설정: 도그렉 없음, 문자 맨 아래 행 중간 부착")
+      
+      (setq continue_loop T)
+      (while continue_loop
+        (princ "\n\n=== 새 지시선 시작 ===")
+        (setq leader_result (draw_custom_leader dimstyle-name))
+        
+        ;; 사용자가 ESC를 누르거나 취소하면 종료
+        (if (not leader_result)
+          (progn
+            (princ "\n지시선 그리기 종료.")
+            (setq continue_loop nil)
+          )
+          (princ "\n지시선 생성 완료!")
+        )
+      )
       (princ)
     )
   )
@@ -544,27 +588,27 @@
         (setq *dim_text_gap* (rtos base_text_gap 2 3))
       )
       
-      ;; 치수 스타일 생성 (다른이름으로 저장한 경우 새 이름 사용)
-      (setq dimstyle-name (if *new_dimstyle_name* *new_dimstyle_name* "ISO-25-Custom"))
+      ;; 치수 스타일 생성 (도면 타입에 따라 이름 결정)
+      (if *new_dimstyle_name*
+        (setq dimstyle-name *new_dimstyle_name*)
+        (if (= *drawing_type* "detail")
+          (setq dimstyle-name "ISO-25-Custom")
+          (setq dimstyle-name "ISO-25-DWG")
+        )
+      )
       (create_dimstyle dimstyle-name)
       
-      ;; MLEADER 최종 크기 계산
-      (setq final_text_height (* (atof *dim_text_height*) (atof *dim_scale*)))
-      (setq final_arrow_size (* (atof *dim_arrow_size*) (atof *dim_scale*)))
-      (setq final_text_gap (* (atof *dim_text_gap*) (atof *dim_scale*)))
-      
-      ;; MLEADER 스타일 생성 (대화상자 표시)
-      (create_mleader_style dimstyle-name 
-                            final_text_height
-                            final_arrow_size
-                            final_text_gap
-      )
+      ;; LEADER는 DIMSTYLE 설정을 자동으로 따름 (별도 설정 불필요)
       
       ;; 연속 치수 그리기
       (princ "\n치수 그리기 시작... (ESC로 종료)")
       (princ (strcat "\n현재 치수 스타일: " dimstyle-name))
       (princ (strcat "\n전체 축척: " *dim_scale*))
-      (princ (strcat "\n치수선 거리: " (rtos (* (atof *dim_distance*) (atof *dim_scale*)) 2 2)))
+      ;; 치수선 거리 출력 (평면도 모드일 경우 0.001배 적용)
+      (if (= *drawing_type* "plan")
+        (princ (strcat "\n치수선 거리: " (rtos (* (atof *dim_distance*) (atof *dim_scale*) 0.001) 2 6)))
+        (princ (strcat "\n치수선 거리: " (rtos (* (atof *dim_distance*) (atof *dim_scale*)) 2 2)))
+      )
       
       (setq continue_loop T)
       (while continue_loop
@@ -603,11 +647,19 @@
                           )
                         )
                         
-                        ;; 치수선 거리 = dim_distance * DIMSCALE (비례 적용)
-                        (setq dim_pt (list 
-                          (+ mid_x (* perp_x (* (atof *dim_distance*) (atof *dim_scale*))))
-                          (+ mid_y (* perp_y (* (atof *dim_distance*) (atof *dim_scale*))))
-                        ))
+                        ;; 치수선 거리 계산 (평면도 모드일 경우 0.001배 적용)
+                        (if (= *drawing_type* "plan")
+                          ;; 평면도(1000): Y값 * 0.001배
+                          (setq dim_pt (list 
+                            (+ mid_x (* perp_x (* (atof *dim_distance*) (atof *dim_scale*) 0.001)))
+                            (+ mid_y (* perp_y (* (atof *dim_distance*) (atof *dim_scale*) 0.001)))
+                          ))
+                          ;; 상세도(1): Y값 그대로
+                          (setq dim_pt (list 
+                            (+ mid_x (* perp_x (* (atof *dim_distance*) (atof *dim_scale*))))
+                            (+ mid_y (* perp_y (* (atof *dim_distance*) (atof *dim_scale*))))
+                          ))
+                        )
                         
                         (if (= *dim_type* "0")
                           (progn
@@ -649,226 +701,296 @@
 )
 
 ;;;; ============================================================================
-;;;; MLEADER 스타일 생성 함수 (디버깅 버전)
+;;;; ActiveX로 LEADER 객체 생성 함수
 ;;;; ============================================================================
-(defun create_mleader_style (style-name final-text-height final-arrow-size final-text-gap / 
-                             old_cmdecho old_osmode dogleg_length
-                             acad_obj doc mleader_styles standard_style new_style
-                             test_result methods_list
+(defun draw_custom_leader (style-name / pt1 pt2 pt_list last_pt text_str 
+                            text_height continue_input leader_ent text_ent 
+                            text_handle leader_dxf leader_result text_result
+                            debug_mode
+                            dxf_72 dxf_73 dxf_11 ; 텍스트 정렬 변수
+                            dogleg_length ; 도그렉(수평 지시선) 길이
+                            text_width pt3 text_pos vertical_offset ; 텍스트 길이 및 위치 계산용
                             )
-  (princ (strcat "\n\n=== MLEADER 스타일 '" style-name "' 생성 디버깅 시작 ==="))
   
-  ;; 환경 변수 저장
-  (setq old_cmdecho (getvar "CMDECHO"))
-  (setq old_osmode (getvar "OSMODE"))
-  (setvar "CMDECHO" 0)
-  (setvar "OSMODE" 0)
+  (vl-load-com)
   
-  ;; 1. MLEADER 지원 여부 확인
-  (princ "\n[1] CMLEADERSTYLE 변수 확인...")
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (princ (strcat "\n    현재 CMLEADERSTYLE = " (getvar "CMLEADERSTYLE")))
-         T
-       )
-    )
+  ;; 디버그 모드 (T = 활성화, nil = 비활성화)
+  (setq debug_mode T)
+  
+  ;; 텍스트 높이 계산
+  (setq text_height (atof *dim_text_height*))
+  (if (= *drawing_type* "plan")
+    ;; 평면도 모드: 3.0 × (7/6) × 0.001 × DIMSCALE
+    (setq text_height (* text_height (/ 7.0 6.0) 0.001 (atof *dim_scale*)))
   )
-  (if (vl-catch-all-error-p test_result)
+  
+  ;; 도그렉(수평 지시선) 길이 계산
+  ;; 실제 도면 단위 기준으로 고정값 사용
+  ;; 평면도: 실제 6000mm = 도면 6mm (1000배 축소)
+  ;; 상세도: 실제 10mm = 도면 10mm (1배)
+  (if (= *drawing_type* "plan")
+    ;; 평면도 모드: 6mm (실제 6000mm)
+    (setq dogleg_length 6)
+    ;; 상세도 모드: 10mm
+    (setq dogleg_length 10)
+  )
+  
+  (if debug_mode
     (progn
-      (princ "\n    [실패] MLEADER를 지원하지 않습니다.")
-      (setvar "CMDECHO" old_cmdecho)
-      (setvar "OSMODE" old_osmode)
-      (princ "\n=== 디버깅 종료 ===\n")
-      (princ)
-      (exit)
+      (princ (strcat "\n[DEBUG] 텍스트 높이: " (rtos text_height 2 6)))
+      (princ (strcat "\n[DEBUG] 도그렉 길이: " (rtos dogleg_length 2 6)))
     )
-    (princ "\n    [성공] MLEADER 지원됨")
   )
   
-  ;; 2. ActiveX 객체 가져오기
-  (princ "\n[2] ActiveX 객체 가져오기...")
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (setq acad_obj (vlax-get-acad-object))
-         (princ "\n    [성공] acad_obj 획득")
-         (setq doc (vla-get-activedocument acad_obj))
-         (princ "\n    [성공] doc 획득")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
+  ;; 첫 번째 점 입력 (화살표 위치)
+  (setq pt1 (getpoint "\n지시선 시작점 (화살표 위치) 선택: "))
+  
+  (if pt1
     (progn
-      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-      (setvar "CMDECHO" old_cmdecho)
-      (setvar "OSMODE" old_osmode)
-      (princ "\n=== 디버깅 종료 ===\n")
-      (princ)
-      (exit)
-    )
-  )
-  
-  ;; 3. Dictionaries를 통해 MLEADERSTYLE dictionary 접근
-  (princ "\n[3] Dictionaries를 통해 MLEADERSTYLE 접근 시도...")
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (setq mleader_styles (vla-item (vla-get-Dictionaries doc) "ACAD_MLEADERSTYLE"))
-         (princ "\n    [성공] ACAD_MLEADERSTYLE Dictionary 획득")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (progn
-      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-      (setvar "CMDECHO" old_cmdecho)
-      (setvar "OSMODE" old_osmode)
-      (princ "\n=== 디버깅 종료 ===\n")
-      (princ)
-      (exit)
-    )
-  )
-  
-  ;; 4. Standard 스타일 확인
-  (princ "\n[4] Standard 스타일 확인...")
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (setq standard_style (vla-item mleader_styles "Standard"))
-         (princ "\n    [성공] Standard 스타일 찾음")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-    (princ "\n    [성공] Standard 스타일 존재")
-  )
-  
-  ;; 5. 새 스타일 추가 시도 (AddObject 사용)
-  (princ "\n[5] 새 스타일 추가 시도 (AddObject 사용)...")
-  (setq dogleg_length (* 0.36 (atof *dim_scale*)))
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         ;; Standard 스타일을 복사하여 새 이름으로 추가
-         (setq new_style (vla-AddObject mleader_styles style-name "AcDbMLeaderStyle"))
-         (princ (strcat "\n    [성공] '" style-name "' 스타일 생성"))
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (progn
-      (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-      (princ "\n    AddObject 방식 실패, CopyFrom 시도...")
+      (if debug_mode
+        (princ (strcat "\n[DEBUG] 시작점: " (vl-prin1-to-string pt1)))
+      )
       
-      ;; CopyFrom 시도
-      (setq test_result
-        (vl-catch-all-apply
-          '(lambda ()
-             (setq new_style (vla-CopyFrom mleader_styles standard_style style-name))
-             (princ (strcat "\n    [성공] CopyFrom으로 '" style-name "' 스타일 생성"))
-             T
-           )
+      ;; 점 리스트 초기화
+      (setq pt_list (list pt1))
+      (setq last_pt pt1)
+      (setq continue_input T)
+      
+      ;; 연속 점 입력
+      (while continue_input
+        (setq pt2 (getpoint last_pt "\n다음 점 선택 (Enter로 종료): "))
+        
+        (if pt2
+          (progn
+            (setq pt_list (append pt_list (list pt2)))
+            (setq last_pt pt2)
+            (if debug_mode
+              (princ (strcat "\n[DEBUG] 점 추가: " (vl-prin1-to-string pt2)))
+            )
+          )
+          (setq continue_input nil)
         )
       )
       
-      (if (vl-catch-all-error-p test_result)
+      (if debug_mode
+        (princ (strcat "\n[DEBUG] 총 점 개수: " (itoa (length pt_list))))
+      )
+      
+      ;; 최소 2개 점 필요
+      (if (>= (length pt_list) 2)
         (progn
-          (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-          (setvar "CMDECHO" old_cmdecho)
-          (setvar "OSMODE" old_osmode)
-          (princ "\n=== 디버깅 종료 ===\n")
-          (princ)
-          (exit)
+          ;; 텍스트 입력
+          (setq text_str (getstring T "\n지시선 텍스트 입력 (Enter로 텍스트 없음): "))
+          
+          (if debug_mode
+            (princ (strcat "\n[DEBUG] 입력된 텍스트: [" 
+                          (if (and text_str (> (strlen text_str) 0)) text_str "없음")
+                          "]"))
+          )
+          
+          ;; TEXT 객체가 필요한 경우 먼저 생성 (LEADER가 참조할 수 있도록)
+          (if (and text_str (> (strlen text_str) 0))
+            (progn
+              (if debug_mode
+                (princ "\n[DEBUG] TEXT 엔티티 생성 중...")
+              )
+              
+              ;; 텍스트 길이 계산 (근사값: 문자 개수 × 텍스트 높이 × 0.9)
+              ;; 실제 측정: 4글자 "we12" = 3.5731mm, 1.05 높이 → 0.9 계수가 적합
+              (setq text_width (* (strlen text_str) text_height 0.9))
+              
+              (if debug_mode
+                (princ (strcat "\n[DEBUG] 예상 텍스트 길이: " (rtos text_width 2 6)))
+              )
+              
+              ;; 2번째 점 (도그렉 시작점)
+              (setq pt2 (last pt_list))
+              
+              ;; 수직 오프셋 계산 (0.0006 × DIMSCALE)
+              ;; 평면도: 0.0006 × 300 = 0.18mm
+              ;; 상세도: 0.0006 × DIMSCALE
+              (setq vertical_offset (* 0.0006 (atof *dim_scale*)))
+              
+              (if debug_mode
+                (princ (strcat "\n[DEBUG] 수직 오프셋 (0.0006 × " *dim_scale* "): " (rtos vertical_offset 2 6)))
+              )
+              
+              ;; 방향 판단: 1번 점 vs 2번 점의 X 좌표 비교
+              (if (> (car pt2) (car pt1))
+                ;; L-to-R: 텍스트 왼쪽 정렬
+                (progn
+                  (setq dxf_72 0) ; 0 = Left
+                  ;; 텍스트 위치: 도그렉 시작점(pt2)에서 Y만 +(0.0006 × DIMSCALE)
+                  (setq text_pos (list (car pt2) (+ (cadr pt2) vertical_offset) (caddr pt2)))
+                  ;; 3번째 점: 텍스트 길이만큼 오른쪽으로
+                  (setq pt3 (list (+ (car pt2) text_width) (cadr pt2) (caddr pt2)))
+                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 왼쪽-밑줄 (L-R)"))
+                )
+                ;; R-to-L: 텍스트 오른쪽 정렬
+                (progn
+                  (setq dxf_72 2) ; 2 = Right
+                  ;; 텍스트 위치: 도그렉 시작점(pt2)에서 Y만 +(0.0006 × DIMSCALE)
+                  (setq text_pos (list (car pt2) (+ (cadr pt2) vertical_offset) (caddr pt2)))
+                  ;; 3번째 점: 텍스트 길이만큼 왼쪽으로
+                  (setq pt3 (list (- (car pt2) text_width) (cadr pt2) (caddr pt2)))
+                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 오른쪽-밑줄 (R-L)"))
+                )
+              )
+              
+              ;; 3번째 점을 점 리스트에 추가
+              (setq pt_list (append pt_list (list pt3)))
+              
+              (if debug_mode
+                (progn
+                  (princ (strcat "\n[DEBUG] 텍스트 위치 (도그렉 +0.0006mm 위): " (vl-prin1-to-string text_pos)))
+                  (princ (strcat "\n[DEBUG] 3번째 점 (텍스트 길이만큼 연장): " (vl-prin1-to-string pt3)))
+                  (princ (strcat "\n[DEBUG] 최종 점 개수: " (itoa (length pt_list))))
+                )
+              )
+              
+              ;; --- 텍스트 정렬 로직 완료 ---
+              (setq dxf_11 text_pos) ; 정렬 기준점 = 텍스트 위치 (도그렉보다 0.0006mm 위)
+              (setq dxf_73 0) ; 수직 정렬: 0 = BASELINE (밑줄이 정렬점에 위치)
+              
+              ;; TEXT 엔티티 생성 (마지막 점 위치)
+              (setq text_result
+                (entmake
+                  (list
+                    (cons 0 "TEXT")
+                    (cons 8 (getvar "CLAYER"))  ; 현재 레이어
+                    (cons 10 dxf_11)  ; 삽입점 (정렬점과 동일하게 설정)
+                    (cons 40 text_height)  ; 텍스트 높이
+                    (cons 1 text_str)  ; 텍스트 문자열
+                    (cons 7 "Standard")  ; 텍스트 스타일
+                    (cons 62 7)  ; 색상: 7=흰색 (white)
+                    (cons 72 dxf_72) ; [수정] 수평 정렬
+                    (cons 73 dxf_73) ; [수정] 수직 정렬
+                    (cons 11 dxf_11) ; [수정] 정렬점 (필수)
+                  )
+                )
+              )
+              
+              (if debug_mode
+                (princ (strcat "\n[DEBUG] TEXT entmake 결과: " (vl-prin1-to-string text_result)))
+              )
+              
+              ;; 방금 생성한 TEXT 엔티티 이름 가져오기
+              (setq text_ent (entlast))
+              
+              (if debug_mode
+                (progn
+                  (princ (strcat "\n[DEBUG] TEXT 엔티티 이름: " (vl-prin1-to-string text_ent)))
+                  (if text_ent
+                    (princ (strcat "\n[DEBUG] TEXT 엔티티 데이터: " (vl-prin1-to-string (entget text_ent))))
+                  )
+                )
+              )
+            )
+            ;; 텍스트가 없으면 기본 도그렉 길이만큼 3번째 점 추가
+            (progn
+              (if debug_mode
+                (princ "\n[DEBUG] 텍스트 없음 - 기본 도그렉 길이 사용")
+              )
+              
+              (setq pt2 (last pt_list))
+              
+              ;; 방향 판단
+              (if (> (car pt2) (car pt1))
+                ;; L-to-R: 오른쪽으로 dogleg_length
+                (setq pt3 (list (+ (car pt2) dogleg_length) (cadr pt2) (caddr pt2)))
+                ;; R-to-L: 왼쪽으로 dogleg_length
+                (setq pt3 (list (- (car pt2) dogleg_length) (cadr pt2) (caddr pt2)))
+              )
+              
+              ;; 3번째 점 추가
+              (setq pt_list (append pt_list (list pt3)))
+              
+              (if debug_mode
+                (princ (strcat "\n[DEBUG] 3번째 점 추가 (기본 도그렉): " (vl-prin1-to-string pt3)))
+              )
+            )
+          )
+          
+          ;; LEADER 엔티티 생성 (entmake 사용)
+          (if debug_mode
+            (princ "\n[DEBUG] LEADER DXF 데이터 구성 중...")
+          )
+          
+          (setq leader_dxf
+            (append
+              (list
+                (cons 0 "LEADER")
+                (cons 100 "AcDbEntity")  ; 필수: 엔티티 서브클래스
+                (cons 8 (getvar "CLAYER"))  ; 현재 레이어
+                (cons 100 "AcDbLeader")  ; 필수: LEADER 서브클래스
+                (cons 3 style-name)  ; 치수 스타일명
+                (cons 71 1)  ; 화살표 있음
+                (cons 72 0)  ; 직선 타입 (0=직선, 1=스플라인)
+                (cons 73 0)  ; 주석 타입 (0=없음) - 텍스트는 별도 엔티티로 관리
+                (cons 74 1)  ; 화살표 헤드 타입: 1=화살표
+                (cons 75 0)  ; 후크라인: 0=없음
+                (cons 76 (length pt_list))  ; 정점 개수 (이제 3개)
+                (cons 40 0.0)  ; 텍스트 주석 높이
+                (cons 41 0.0)  ; 텍스트 주석 너비
+                (cons 210 (list 0.0 0.0 1.0)) ; 법선 벡터 (Z축)
+              )
+              ;; TEXT 엔티티는 별도로 관리하므로 340 코드 제거
+              nil
+              ;; 점 좌표 추가 (10 = 각 정점)
+              (mapcar '(lambda (pt) (cons 10 pt)) pt_list)
+            )
+          )
+          
+          (if debug_mode
+            (princ (strcat "\n[DEBUG] LEADER DXF 데이터: " (vl-prin1-to-string leader_dxf)))
+          )
+          
+          ;; LEADER 생성
+          (if debug_mode
+            (princ "\n[DEBUG] LEADER entmake 실행 중...")
+          )
+          
+          (setq leader_result (entmake leader_dxf))
+          
+          (if debug_mode
+            (progn
+              (princ (strcat "\n[DEBUG] LEADER entmake 결과: " (vl-prin1-to-string leader_result)))
+              (if leader_result
+                (progn
+                  (setq leader_ent (entlast))
+                  (princ (strcat "\n[DEBUG] LEADER 엔티티 이름: " (vl-prin1-to-string leader_ent)))
+                  (if leader_ent
+                    (princ (strcat "\n[DEBUG] LEADER 엔티티 데이터: " (vl-prin1-to-string (entget leader_ent))))
+                  )
+                )
+                (princ "\n[DEBUG] LEADER 생성 실패!")
+              )
+            )
+          )
+          
+          ;; 메시지 출력
+          (if leader_result
+            (progn
+              (if (and text_str (> (strlen text_str) 0))
+                (princ (strcat "\n[OK] 지시선 생성 성공: " (itoa (length pt_list)) "개 점, 텍스트: " text_str))
+                (princ (strcat "\n[OK] 지시선 생성 성공: " (itoa (length pt_list)) "개 점, 텍스트 없음"))
+              )
+              T  ; 성공
+            )
+            (progn
+              (princ "\n[FAIL] 지시선 생성 실패!")
+              nil  ; 실패
+            )
+          )
+        )
+        (progn
+          (princ "\n최소 2개 점이 필요합니다.")
+          nil  ; 실패
         )
       )
     )
+    nil  ; 취소
   )
-  
-  ;; 6. 속성 설정 시도
-  (princ "\n[6] 속성 설정 시도...")
-  (princ (strcat "\n    TextHeight = " (rtos final-text-height 2 2)))
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (vla-put-TextHeight new_style final-text-height)
-         (princ "\n    [성공] TextHeight 설정")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-  )
-  
-  (princ (strcat "\n    ArrowSize = " (rtos final-arrow-size 2 2)))
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (vla-put-ArrowSize new_style final-arrow-size)
-         (princ "\n    [성공] ArrowSize 설정")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-  )
-  
-  (princ (strcat "\n    LandingGap = " (rtos final-text-gap 2 2)))
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (vla-put-LandingGap new_style final-text-gap)
-         (princ "\n    [성공] LandingGap 설정")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-  )
-  
-  (princ (strcat "\n    DoglegLength = " (rtos dogleg_length 2 2)))
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (vla-put-DoglegLength new_style dogleg_length)
-         (princ "\n    [성공] DoglegLength 설정")
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-  )
-  
-  ;; 7. 현재 스타일로 설정 시도
-  (princ "\n[7] 현재 MLEADER 스타일로 설정 시도...")
-  (setq test_result
-    (vl-catch-all-apply
-      '(lambda ()
-         (setvar "CMLEADERSTYLE" style-name)
-         (princ (strcat "\n    [성공] CMLEADERSTYLE = " (getvar "CMLEADERSTYLE")))
-         T
-       )
-    )
-  )
-  (if (vl-catch-all-error-p test_result)
-    (princ (strcat "\n    [실패] " (vl-catch-all-error-message test_result)))
-  )
-  
-  ;; 환경 변수 복원
-  (setvar "CMDECHO" old_cmdecho)
-  (setvar "OSMODE" old_osmode)
-  
-  (princ "\n=== 디버깅 종료 ===\n")
-  (princ)
 )
 
 ;;;; ============================================================================
@@ -887,7 +1009,50 @@
 ;;;; ============================================================================
 ;;;; 치수 스타일 생성 함수
 ;;;; ============================================================================
-(defun create_dimstyle (style-name /)
+(defun create_dimstyle (style-name / final_text_height final_arrow_size final_ext_offset final_ext_extend final_text_gap
+                                    old_dimstyle old_dimanno)
+  
+  ;; 현재 치수 스타일이 주석(Annotative)인지 확인
+  (setq old_dimstyle (getvar "DIMSTYLE"))
+  (setq old_dimanno (getvar "DIMANNO"))
+  
+  (if (= old_dimanno 1)
+    (progn
+      (princ (strcat "\n현재 스타일(" old_dimstyle ")이 주석입니다. 'Standard'로 임시 변경..."))
+      ;; 'Standard' 스타일이 존재하는지 확인
+      (if (not (tblsearch "DIMSTYLE" "Standard"))
+        (progn
+          ;; Standard 스타일이 없으면 오류 메시지 후 종료 (치명적 오류)
+          (alert "치명적 오류: 'Standard' 치수 스타일을 찾을 수 없습니다!\n'Standard' 스타일을 복구한 후 다시 시도하세요.")
+          (exit)
+        )
+        ;; Standard 스타일이 있으면 복원 (이 스타일을 기반으로 설정 변경)
+        (command "._-DIMSTYLE" "_R" "Standard")
+      )
+    )
+  )
+  
+  ;; 평면도(1000) 모드인 경우 축척 조정
+  (if (= *drawing_type* "plan")
+    (progn
+      ;; 텍스트 높이: 7/6 * 0.001배
+      (setq final_text_height (* (atof *dim_text_height*) (/ 7.0 6.0) 0.001))
+      ;; 화살표 크기: 8/5 * 0.001배
+      (setq final_arrow_size (* (atof *dim_arrow_size*) (/ 8.0 5.0) 0.001))
+      ;; 나머지: 0.001배
+      (setq final_ext_offset (* (atof *dim_ext_offset*) 0.001))
+      (setq final_ext_extend (* (atof *dim_ext_extend*) 0.001))
+      (setq final_text_gap (* (atof *dim_text_gap*) 0.001))
+    )
+    (progn
+      ;; 상세도(1) 모드: 그대로 사용
+      (setq final_text_height (atof *dim_text_height*))
+      (setq final_arrow_size (atof *dim_arrow_size*))
+      (setq final_ext_offset (atof *dim_ext_offset*))
+      (setq final_ext_extend (atof *dim_ext_extend*))
+      (setq final_text_gap (atof *dim_text_gap*))
+    )
+  )
   
   ;; 치수선 설정
   (setvar "DIMCLRD" 256)
@@ -896,26 +1061,28 @@
   
   ;; 치수보조선 설정
   (setvar "DIMCLRE" 256)
-  (setvar "DIMEXE" (atof *dim_ext_extend*))
-  (setvar "DIMEXO" (atof *dim_ext_offset*))
+  (setvar "DIMEXE" final_ext_extend)
+  (setvar "DIMEXO" final_ext_offset)
   (setvar "DIMSE1" 0)
   (setvar "DIMSE2" 0)
   
-  ;; 화살촉 설정
-  (setvar "DIMBLK" "")
-  (setvar "DIMBLK1" "")
-  (setvar "DIMBLK2" "")
-  (setvar "DIMASZ" (atof *dim_arrow_size*))
+  ;; 화살촉 설정: 닫고채움 (ClosedFilled)
+  ;; AutoCAD 기본 '닫고 채움' 화살표(.)로 설정
+  (vl-catch-all-apply 'setvar (list "DIMBLK" "."))
+  (vl-catch-all-apply 'setvar (list "DIMBLK1" "."))
+  (vl-catch-all-apply 'setvar (list "DIMBLK2" "."))
+  (vl-catch-all-apply 'setvar (list "DIMLDRBLK" "."))  ; 지시선 화살표
+  (setvar "DIMASZ" final_arrow_size)
   (setvar "DIMCEN" 2.5)
   
   ;; 문자 설정
   (setvar "DIMTXSTY" "Standard")
   (setvar "DIMCLRT" 7)
-  (setvar "DIMTXT" (atof *dim_text_height*))
+  (setvar "DIMTXT" final_text_height)
   (setvar "DIMTFAC" 1.0)
-  (setvar "DIMTAD" 1)
+  (setvar "DIMTAD" 1) ; [중요] 1 = 수평 지시선 사용 (Leader의 Landing)
   (setvar "DIMJUST" 0)
-  (setvar "DIMGAP" (atof *dim_text_gap*))
+  (setvar "DIMGAP" final_text_gap)
   (setvar "DIMTIH" 0)
   (setvar "DIMTOH" 0)
   
@@ -956,9 +1123,13 @@
   
   (princ (strcat "\n치수 스타일 '" style-name "' 생성 완료!"))
   (princ "\n=== ISO-25 표준 설정 적용됨 ===")
+  (princ (strcat "\n  도면 타입: " (if (= *drawing_type* "detail") "상세도(1)" "평면도(1000)")))
   (princ (strcat "\n  전체 축척: " *dim_scale*))
-  (princ (strcat "\n  문자 높이 (기본): " *dim_text_height*))
-  (princ (strcat "\n  화살표 크기 (기본): " *dim_arrow_size*))
+  (princ (strcat "\n  문자 높이: " (rtos final_text_height 2 6)))
+  (princ (strcat "\n  화살표 크기: " (rtos final_arrow_size 2 6)))
+  (princ (strcat "\n  연장선 오프셋: " (rtos final_ext_offset 2 6)))
+  (princ (strcat "\n  연장선 길이: " (rtos final_ext_extend 2 6)))
+  (princ (strcat "\n  텍스트 간격: " (rtos final_text_gap 2 6)))
   (princ)
 )
 
