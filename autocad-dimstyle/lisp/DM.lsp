@@ -722,6 +722,8 @@
   (if (= *drawing_type* "plan")
     ;; 평면도 모드: 3.0 × (7/6) × 0.001 × DIMSCALE
     (setq text_height (* text_height (/ 7.0 6.0) 0.001 (atof *dim_scale*)))
+    ;; 상세도 모드: 3.0 × (7/6) × DIMSCALE
+    (setq text_height (* text_height (/ 7.0 6.0) (atof *dim_scale*)))
   )
   
   ;; 도그렉(수평 지시선) 길이 계산
@@ -1035,7 +1037,7 @@
   ;; 평면도(1000) 모드인 경우 축척 조정
   (if (= *drawing_type* "plan")
     (progn
-      ;; 텍스트 높이: 7/6 * 0.001배
+      ;; 텍스트 높이: 7/6 * 0.001배 (DIMSCALE은 setvar로 별도 적용)
       (setq final_text_height (* (atof *dim_text_height*) (/ 7.0 6.0) 0.001))
       ;; 화살표 크기: 8/5 * 0.001배
       (setq final_arrow_size (* (atof *dim_arrow_size*) (/ 8.0 5.0) 0.001))
@@ -1045,9 +1047,9 @@
       (setq final_text_gap (* (atof *dim_text_gap*) 0.001))
     )
     (progn
-      ;; 상세도(1) 모드: 그대로 사용
-      (setq final_text_height (atof *dim_text_height*))
-      (setq final_arrow_size (atof *dim_arrow_size*))
+      ;; 상세도(1) 모드: 기본값 사용 (DIMSCALE은 setvar로 별도 적용)
+      (setq final_text_height (* (atof *dim_text_height*) (/ 7.0 6.0)))
+      (setq final_arrow_size (* (atof *dim_arrow_size*) (/ 8.0 5.0)))
       (setq final_ext_offset (atof *dim_ext_offset*))
       (setq final_ext_extend (atof *dim_ext_extend*))
       (setq final_text_gap (atof *dim_text_gap*))
