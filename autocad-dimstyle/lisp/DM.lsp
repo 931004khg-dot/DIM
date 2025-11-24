@@ -717,13 +717,14 @@
   ;; 디버그 모드 (T = 활성화, nil = 비활성화)
   (setq debug_mode T)
   
-  ;; 텍스트 높이 계산
+  ;; 텍스트 높이 계산 (치수 스타일과 동일한 로직)
   (setq text_height (atof *dim_text_height*))
   (if (= *drawing_type* "plan")
     ;; 평면도 모드: 3.0 × (7/6) × 0.001 × DIMSCALE
     (setq text_height (* text_height (/ 7.0 6.0) 0.001 (atof *dim_scale*)))
-    ;; 상세도 모드: 3.0 × (7/6) × DIMSCALE
-    (setq text_height (* text_height (/ 7.0 6.0) (atof *dim_scale*)))
+    ;; 상세도 모드: 3.0 × DIMSCALE (기본값에 DIMSCALE 곱함)
+    ;; TEXT 엔티티는 최종 크기를 직접 지정해야 함
+    (setq text_height (* text_height (atof *dim_scale*)))
   )
   
   ;; 도그렉(수평 지시선) 길이 계산
@@ -797,45 +798,100 @@
                 (princ "\n[DEBUG] TEXT 엔티티 생성 중...")
               )
               
-              ;; 텍스트 길이 계산 (근사값: 문자 개수 × 텍스트 높이 × 0.9)
-              ;; 실제 측정: 4글자 "we12" = 3.5731mm, 1.05 높이 → 0.9 계수가 적합
-              (setq text_width (* (strlen text_str) text_height 0.9))
+              ;; 여백 계산 (축척에 비례, 문자 길이 무관)
+              ;; 평면도: 1mm (실제 1000mm) = 1.0 × 0.001 × DIMSCALE
+              ;; 상세도: 1mm × DIMSCALE
+              (if (= *drawing_type* "plan")
+                (setq margin (* 1.0 0.001 (atof *dim_scale*)))
+                (setq margin (* 1.0 (atof *dim_scale*)))
+              )
+              
+              ;; 임시 텍스트 생성하여 실제 너비 측정
+              ;; 원점에 임시 TEXT 엔티티 생성
+              (setq temp_text_result
+                (entmake
+                  (list
+                    (cons 0 "TEXT")
+                    (cons 8 (getvar "CLAYER"))
+                    (cons 10 '(0.0 0.0 0.0))  ; 임시 위치
+                    (cons 40 text_height)
+                    (cons 1 text_str)
+                    (cons 7 "Standard")
+                    (cons 72 0)  ; 왼쪽 정렬
+                    (cons 73 0)  ; 베이스라인
+                  )
+                )
+              )
+              
+              ;; 임시 텍스트 엔티티 가져오기
+              (setq temp_text_ent (entlast))
+              
+              ;; textbox로 실제 텍스트 바운딩 박스 측정
+              (setq text_bbox (textbox (entget temp_text_ent)))
+              (setq text_width (- (car (cadr text_bbox)) (car (car text_bbox))))
+              
+              ;; 임시 텍스트 삭제
+              (entdel temp_text_ent)
+              
+              ;; 어깨선 길이: 실제 텍스트 폭 + 양쪽 여백
+              (setq shoulder_length (+ text_width (* margin 2.0)))
               
               (if debug_mode
-                (princ (strcat "\n[DEBUG] 예상 텍스트 길이: " (rtos text_width 2 6)))
+                (progn
+                  (princ (strcat "\n[DEBUG] 실제 텍스트 폭 (textbox 측정): " (rtos text_width 2 6)))
+                  (princ (strcat "\n[DEBUG] 여백 (양쪽): " (rtos margin 2 6)))
+                  (princ (strcat "\n[DEBUG] 어깨선 길이: " (rtos shoulder_length 2 6)))
+                )
               )
               
               ;; 2번째 점 (도그렉 시작점)
               (setq pt2 (last pt_list))
               
-              ;; 수직 오프셋 계산 (0.0006 × DIMSCALE)
-              ;; 평면도: 0.0006 × 300 = 0.18mm
-              ;; 상세도: 0.0006 × DIMSCALE
-              (setq vertical_offset (* 0.0006 (atof *dim_scale*)))
+              ;; 수직 오프셋 계산 (DIMSCALE에 비례)
+              ;; 평면도: 0.0006 × DIMSCALE
+              ;; 수직 오프셋 계산
+              ;; 치수선: MTEXT 중심 = 가로선 + DIMGAP + (높이/2)
+              ;;        MTEXT 밑줄 = MTEXT 중심 - (높이/2) = 가로선 + DIMGAP
+              ;; 지시선: TEXT 밑줄 = 가로선 + vertical_offset
+              ;; 결론: vertical_offset = DIMGAP (정확히 일치)
+              (if (= *drawing_type* "plan")
+                ;; 평면도: DIMGAP = 0.625 × 0.001 × DIMSCALE
+                (setq vertical_offset (* (atof *dim_text_gap*) 0.001 (atof *dim_scale*)))
+                ;; 상세도: 기존 요구사항 유지 (3.6 / 7 × DIMSCALE)
+                (setq vertical_offset (* (/ 3.6 7.0) (atof *dim_scale*)))
+              )
               
               (if debug_mode
-                (princ (strcat "\n[DEBUG] 수직 오프셋 (0.0006 × " *dim_scale* "): " (rtos vertical_offset 2 6)))
+                (princ (strcat "\n[DEBUG] 수직 오프셋 (DIMGAP): " (rtos vertical_offset 2 6)))
               )
               
               ;; 방향 판단: 1번 점 vs 2번 점의 X 좌표 비교
               (if (> (car pt2) (car pt1))
-                ;; L-to-R: 텍스트 왼쪽 정렬
+                ;; L-to-R: 텍스트 중앙 정렬
                 (progn
-                  (setq dxf_72 0) ; 0 = Left
-                  ;; 텍스트 위치: 도그렉 시작점(pt2)에서 Y만 +(0.0006 × DIMSCALE)
-                  (setq text_pos (list (car pt2) (+ (cadr pt2) vertical_offset) (caddr pt2)))
-                  ;; 3번째 점: 텍스트 길이만큼 오른쪽으로
-                  (setq pt3 (list (+ (car pt2) text_width) (cadr pt2) (caddr pt2)))
-                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 왼쪽-밑줄 (L-R)"))
+                  (setq dxf_72 1) ; 1 = Center
+                  ;; 3번째 점: 어깨선 길이만큼 오른쪽으로
+                  (setq pt3 (list (+ (car pt2) shoulder_length) (cadr pt2) (caddr pt2)))
+                  ;; 텍스트 위치: 어깨선 중앙 (pt2와 pt3의 중간)
+                  (setq text_pos (list 
+                    (/ (+ (car pt2) (car pt3)) 2.0)
+                    (+ (cadr pt2) vertical_offset)
+                    (caddr pt2)
+                  ))
+                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 중앙-밑줄 (L-R)"))
                 )
-                ;; R-to-L: 텍스트 오른쪽 정렬
+                ;; R-to-L: 텍스트 중앙 정렬
                 (progn
-                  (setq dxf_72 2) ; 2 = Right
-                  ;; 텍스트 위치: 도그렉 시작점(pt2)에서 Y만 +(0.0006 × DIMSCALE)
-                  (setq text_pos (list (car pt2) (+ (cadr pt2) vertical_offset) (caddr pt2)))
-                  ;; 3번째 점: 텍스트 길이만큼 왼쪽으로
-                  (setq pt3 (list (- (car pt2) text_width) (cadr pt2) (caddr pt2)))
-                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 오른쪽-밑줄 (R-L)"))
+                  (setq dxf_72 1) ; 1 = Center
+                  ;; 3번째 점: 어깨선 길이만큼 왼쪽으로
+                  (setq pt3 (list (- (car pt2) shoulder_length) (cadr pt2) (caddr pt2)))
+                  ;; 텍스트 위치: 어깨선 중앙 (pt2와 pt3의 중간)
+                  (setq text_pos (list 
+                    (/ (+ (car pt2) (car pt3)) 2.0)
+                    (+ (cadr pt2) vertical_offset)
+                    (caddr pt2)
+                  ))
+                  (if debug_mode (princ "\n[DEBUG] 텍스트 정렬: 중앙-밑줄 (R-L)"))
                 )
               )
               
@@ -844,14 +900,16 @@
               
               (if debug_mode
                 (progn
-                  (princ (strcat "\n[DEBUG] 텍스트 위치 (도그렉 +0.0006mm 위): " (vl-prin1-to-string text_pos)))
-                  (princ (strcat "\n[DEBUG] 3번째 점 (텍스트 길이만큼 연장): " (vl-prin1-to-string pt3)))
+                  (princ (strcat "\n[DEBUG] 텍스트 폭: " (rtos text_width 2 6)))
+                  (princ (strcat "\n[DEBUG] 어깨선 길이: " (rtos shoulder_length 2 6)))
+                  (princ (strcat "\n[DEBUG] 텍스트 위치 (어깨선 중앙): " (vl-prin1-to-string text_pos)))
+                  (princ (strcat "\n[DEBUG] 3번째 점: " (vl-prin1-to-string pt3)))
                   (princ (strcat "\n[DEBUG] 최종 점 개수: " (itoa (length pt_list))))
                 )
               )
               
               ;; --- 텍스트 정렬 로직 완료 ---
-              (setq dxf_11 text_pos) ; 정렬 기준점 = 텍스트 위치 (도그렉보다 0.0006mm 위)
+              (setq dxf_11 text_pos) ; 정렬 기준점 = 어깨선 중앙
               (setq dxf_73 0) ; 수직 정렬: 0 = BASELINE (밑줄이 정렬점에 위치)
               
               ;; TEXT 엔티티 생성 (마지막 점 위치)
@@ -1047,9 +1105,10 @@
       (setq final_text_gap (* (atof *dim_text_gap*) 0.001))
     )
     (progn
-      ;; 상세도(1) 모드: 기본값 사용 (DIMSCALE은 setvar로 별도 적용)
-      (setq final_text_height (* (atof *dim_text_height*) (/ 7.0 6.0)))
-      (setq final_arrow_size (* (atof *dim_arrow_size*) (/ 8.0 5.0)))
+      ;; 상세도(1) 모드: 기본값 그대로 사용 (DIMSCALE이 자동 적용됨)
+      ;; 평면도와 달리 1:1 비율이므로 0.001배 같은 특수 계수 불필요
+      (setq final_text_height (atof *dim_text_height*))
+      (setq final_arrow_size (atof *dim_arrow_size*))
       (setq final_ext_offset (atof *dim_ext_offset*))
       (setq final_ext_extend (atof *dim_ext_extend*))
       (setq final_text_gap (atof *dim_text_gap*))
