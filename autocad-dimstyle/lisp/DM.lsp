@@ -782,53 +782,48 @@
       ;; 최소 2개 점 필요
       (if (>= (length pt_list) 2)
         (progn
-          ;; 텍스트 입력 또는 선택
-          (initget "Select")
-          (setq text_input (getstring T "\n지시선 텍스트 입력 (Enter=텍스트 없음, S=복사할 텍스트 선택): "))
+          ;; 텍스트 입력 또는 엔티티 선택
+          (princ "\n지시선 텍스트 입력 (Enter=텍스트 없음, 복사할 TEXT 선택): ")
           
-          ;; 텍스트 선택 옵션 처리
-          (if (= text_input "S")
+          ;; entsel과 getstring을 동시에 처리하기 위해 grread 사용
+          (setq input_result (entsel))
+          
+          ;; 엔티티가 선택되었는지 확인
+          (if input_result
+            ;; 엔티티 선택 모드
             (progn
-              (princ "\n복사할 TEXT 또는 MTEXT 엔티티 선택: ")
-              (setq selected_ent (car (entsel)))
+              (setq selected_ent (car input_result))
+              (setq ent_data (entget selected_ent))
+              (setq ent_type (cdr (assoc 0 ent_data)))
               
-              (if selected_ent
-                (progn
-                  (setq ent_data (entget selected_ent))
-                  (setq ent_type (cdr (assoc 0 ent_data)))
-                  
-                  (cond
-                    ;; TEXT 엔티티
-                    ((= ent_type "TEXT")
-                      (setq text_str (cdr (assoc 1 ent_data)))
-                      (princ (strcat "\n복사된 텍스트: \"" text_str "\""))
-                    )
-                    ;; MTEXT 엔티티
-                    ((= ent_type "MTEXT")
-                      (setq text_str (cdr (assoc 1 ent_data)))
-                      ;; MTEXT는 여러 DXF 1 그룹이 있을 수 있음
-                      (while (setq next_text (cdr (assoc 3 ent_data)))
-                        (setq text_str (strcat text_str next_text))
-                        (setq ent_data (cdr (member (assoc 3 ent_data) ent_data)))
-                      )
-                      (princ (strcat "\n복사된 텍스트: \"" text_str "\""))
-                    )
-                    ;; 다른 엔티티 타입
-                    (T
-                      (princ (strcat "\n선택한 엔티티는 TEXT 또는 MTEXT가 아닙니다: " ent_type))
-                      (setq text_str "")
-                    )
-                  )
+              (cond
+                ;; TEXT 엔티티
+                ((= ent_type "TEXT")
+                  (setq text_str (cdr (assoc 1 ent_data)))
+                  (princ (strcat "\n복사된 텍스트: \"" text_str "\""))
                 )
-                ;; 선택 취소
-                (progn
-                  (princ "\n텍스트 선택이 취소되었습니다.")
-                  (setq text_str "")
+                ;; MTEXT 엔티티
+                ((= ent_type "MTEXT")
+                  (setq text_str (cdr (assoc 1 ent_data)))
+                  ;; MTEXT는 여러 DXF 3 그룹이 있을 수 있음
+                  (setq temp_data ent_data)
+                  (while (setq next_text (cdr (assoc 3 temp_data)))
+                    (setq text_str (strcat text_str next_text))
+                    (setq temp_data (cdr (member (assoc 3 temp_data) temp_data)))
+                  )
+                  (princ (strcat "\n복사된 텍스트: \"" text_str "\""))
+                )
+                ;; 다른 엔티티 타입 - 텍스트 입력으로 전환
+                (T
+                  (princ (strcat "\n선택한 엔티티는 TEXT 또는 MTEXT가 아닙니다: " ent_type))
+                  (setq text_str (getstring T "\n지시선 텍스트 입력: "))
                 )
               )
             )
-            ;; 일반 텍스트 입력
-            (setq text_str text_input)
+            ;; 엔티티가 선택되지 않음 - 텍스트 입력 대기
+            (progn
+              (setq text_str (getstring T))
+            )
           )
           
           (if debug_mode
